@@ -1,0 +1,2159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Mediola STATIM Service Manager</title>
+<style>
+  :root{
+    --bg:#eef3f6;
+    --panel:#ffffff;
+    --panel2:#f7fafb;
+    --ink:#17242b;
+    --muted:#667780;
+    --line:#d8e1e6;
+    --brand:#0f6f78;
+    --brand2:#0b535a;
+    --ok:#18794e;
+    --warn:#a16207;
+    --danger:#b42318;
+    --info:#2457a6;
+    --shadow:0 10px 28px rgba(23,36,43,.09);
+    --radius:16px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+  button,input,select,textarea{font:inherit}
+  button{cursor:pointer}
+  .topbar{
+    position:sticky;top:0;z-index:20;background:#0d5961;color:white;
+    display:flex;align-items:center;gap:14px;padding:12px 18px;box-shadow:0 5px 18px rgba(0,0,0,.18);
+    flex-wrap:wrap
+  }
+  .brand{display:flex;align-items:center;gap:10px;min-width:270px}
+  .logo{
+    width:38px;height:38px;border-radius:12px;background:white;color:var(--brand);
+    display:grid;place-items:center;font-weight:900;font-size:18px
+  }
+  .brand h1{font-size:16px;margin:0}.brand small{display:block;opacity:.76;margin-top:2px}
+  .top-actions{
+    margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;
+    min-width:0;flex:1 1 620px
+  }
+  .top-actions .btn,.top-actions select{white-space:nowrap;flex:0 0 auto}
+  .btn{
+    border:0;border-radius:10px;padding:9px 12px;font-weight:700;background:#e8f3f4;color:#0b535a
+  }
+  .btn:hover{filter:brightness(.98)}
+  .btn.primary{background:#fff;color:#0b535a}
+  .btn.brand{
+    background:var(--brand);color:#fff;min-width:0;display:inline-flex;
+    align-items:center;justify-content:center;gap:0
+  }
+  .btn.ghost{background:transparent;border:1px solid #c9d9dd;color:var(--ink)}
+  .btn.danger{background:#fff0ee;color:var(--danger)}
+  .btn.small{padding:6px 9px;font-size:12px;border-radius:8px}
+  .layout{display:grid;grid-template-columns:290px minmax(0,1fr);min-height:calc(100vh - 62px)}
+  aside{background:#f9fbfc;border-right:1px solid var(--line);padding:18px;position:sticky;top:62px;height:calc(100vh - 62px);overflow:auto}
+  main{padding:20px;min-width:0}
+  .section-title{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:800;margin:16px 0 8px}
+  .filter{display:grid;gap:7px;margin-bottom:10px}
+  .filter label{font-size:12px;color:var(--muted);font-weight:700}
+  input,select,textarea{
+    width:100%;border:1px solid #cdd9de;background:white;border-radius:10px;padding:9px 10px;color:var(--ink);outline:none
+  }
+  input:focus,select:focus,textarea:focus{border-color:#58a7ae;box-shadow:0 0 0 3px rgba(15,111,120,.1)}
+  textarea{min-height:84px;resize:vertical}
+  .seg{display:flex;gap:6px;flex-wrap:wrap}
+  .seg button{border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 9px;font-size:12px}
+  .seg button.active{background:#d9eff1;border-color:#87c4ca;color:#0b535a;font-weight:800}
+  .stats{display:grid;grid-template-columns:repeat(5,minmax(120px,1fr));gap:12px;margin-bottom:18px}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;box-shadow:0 5px 14px rgba(23,36,43,.04)}
+  .stat .n{font-size:28px;font-weight:900;line-height:1}.stat .l{font-size:12px;color:var(--muted);margin-top:7px;font-weight:700}
+  .toolbar{display:flex;gap:10px;align-items:center;margin:8px 0 14px}
+  .toolbar h2{font-size:18px;margin:0}.toolbar .count{font-size:12px;color:var(--muted)}
+  .toolbar .spacer{flex:1}
+  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:14px}
+  .card{
+    background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+    padding:15px;box-shadow:var(--shadow);transition:.15s;position:relative;overflow:hidden
+  }
+  .card.due-overdue{
+    background:linear-gradient(135deg,rgba(180,35,24,.115) 0%,rgba(255,255,255,.97) 58%);
+    border-color:rgba(180,35,24,.30)
+  }
+  .card.due-due{
+    background:linear-gradient(135deg,rgba(217,138,0,.13) 0%,rgba(255,255,255,.98) 60%);
+    border-color:rgba(185,115,0,.30)
+  }
+  .card.due-soon{
+    background:linear-gradient(135deg,rgba(217,184,0,.075) 0%,rgba(255,255,255,.99) 62%);
+    border-color:rgba(179,153,0,.22)
+  }
+  .card:hover{transform:translateY(-2px);box-shadow:0 13px 32px rgba(23,36,43,.12)}
+  .stripe{position:absolute;left:0;top:0;bottom:0;width:5px;background:#8fa1a8}
+  .stripe.overdue{background:var(--danger)} .stripe.due{background:#d98a00}
+  .stripe.soon{background:#d9b800}.stripe.ok{background:var(--ok)}
+  .card-top{display:flex;gap:10px;align-items:flex-start}
+  .card h3{margin:0;font-size:16px;line-height:1.25}.sub{font-size:12px;color:var(--muted);margin-top:4px}
+  .badge{display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:4px 7px;font-size:11px;font-weight:800;background:#edf2f4;color:#52636b}
+  .badge.overdue{background:#ffe6e2;color:var(--danger)}
+  .badge.due{background:#fff0cf;color:#8d5200}
+  .badge.soon{background:#fff9d7;color:#7e6900}
+  .badge.ok{background:#e3f4ea;color:var(--ok)}
+  .badge.repair{background:#e6efff;color:var(--info)}
+  .card .meta{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:13px}
+  .meta-box{background:var(--panel2);border:1px solid #e6ecef;padding:9px;border-radius:10px}
+  .meta-box .k{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:800}
+  .meta-box .v{font-size:13px;font-weight:800;margin-top:3px}
+  .due-list{display:grid;gap:7px;margin-top:11px}
+  .due-line{display:flex;justify-content:space-between;gap:10px;align-items:center;font-size:12px}
+  .card-actions{
+    display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;
+    margin-top:13px;border-top:1px solid #edf1f3;padding-top:11px
+  }
+  .card-actions .btn{
+    width:100%;min-width:0;white-space:normal;line-height:1.15;
+    min-height:40px;padding:8px 7px;text-align:center
+  }
+  .empty{padding:40px;border:1px dashed #b9c7cd;border-radius:16px;background:#f9fbfc;text-align:center;color:var(--muted)}
+  .side-note{font-size:11px;line-height:1.5;color:var(--muted);background:#edf5f6;border-radius:10px;padding:10px;margin-top:14px}
+  .modal{
+    position:fixed;inset:0;background:rgba(13,29,34,.55);display:none;align-items:flex-start;justify-content:center;
+    padding:35px 15px;z-index:50;overflow:auto
+  }
+  .modal.open{display:flex}
+  .dialog{width:min(980px,100%);background:#fff;border-radius:18px;box-shadow:0 24px 70px rgba(0,0,0,.3);overflow:hidden}
+  .dialog.sm{width:min(680px,100%)}
+  .dialog-head{display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid var(--line);position:sticky;top:-35px;background:#fff;z-index:2}
+  .dialog-head h2{font-size:18px;margin:0}.dialog-head .spacer{flex:1}
+  .x{border:0;background:#edf2f4;border-radius:9px;width:34px;height:34px;font-size:18px}
+  .dialog-body{padding:18px}
+  .tabs{display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding:0 18px;background:#fafcfd}
+  .tab{border:0;background:transparent;padding:11px 9px;border-bottom:3px solid transparent;font-weight:800;color:var(--muted)}
+  .tab.active{color:var(--brand);border-bottom-color:var(--brand)}
+  .tabpage{display:none}.tabpage.active{display:block}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .field{display:grid;gap:5px}.field label{font-size:12px;color:var(--muted);font-weight:800}
+  .span2{grid-column:span 2}.span3{grid-column:span 3}
+  .checkrow{display:flex;gap:10px;align-items:center;padding:10px;background:#f7fafb;border:1px solid var(--line);border-radius:12px}
+  .checkrow input[type=checkbox]{width:auto}
+  .history{display:grid;gap:10px}
+  .history-item{border:1px solid var(--line);background:#fbfcfd;border-radius:12px;padding:11px}
+  .history-top{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.history-top strong{margin-right:auto}
+  .history-body{font-size:12px;color:#44545c;margin-top:7px;white-space:pre-wrap}
+  .history-actions{display:flex;gap:6px;margin-top:8px}
+  .gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}
+  .photo{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff}
+  .photo img{width:100%;height:110px;object-fit:cover;display:block}
+  .photo .cap{padding:7px;font-size:11px}.photo .photo-actions{display:flex;gap:4px;padding:0 7px 7px}
+  .drop{
+    border:2px dashed #a9c3c8;border-radius:14px;padding:24px;text-align:center;background:#f5fafb;color:var(--muted)
+  }
+  .drop.drag{background:#e6f5f6;border-color:#559fa7}
+  .footer-actions{display:flex;gap:8px;justify-content:flex-end;border-top:1px solid var(--line);padding:14px 18px;background:#fafcfd;position:sticky;bottom:-35px}
+  .notice{padding:10px 12px;border-radius:10px;background:#eef5ff;color:#285589;font-size:12px;margin-bottom:12px}
+  .toast{position:fixed;right:18px;bottom:18px;z-index:100;background:#17242b;color:#fff;padding:10px 13px;border-radius:10px;box-shadow:var(--shadow);display:none}
+  .toast.show{display:block}
+  .mini-table{width:100%;border-collapse:collapse;font-size:12px}
+  .mini-table th,.mini-table td{padding:8px;border-bottom:1px solid #e7ecef;text-align:left;vertical-align:top}
+  .mini-table th{color:var(--muted);font-size:11px;text-transform:uppercase}
+  .pillrow{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}
+  .archived{opacity:.58}
+  .location-list{display:grid;gap:12px}
+  .location-card{border:1px solid var(--line);border-radius:14px;background:#fbfcfd;padding:13px}
+  .location-head{display:flex;gap:10px;align-items:flex-start}
+  .location-head h3{margin:0;font-size:16px}
+  .location-actions{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+  .ward-list{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+  .ward-chip{display:inline-flex;align-items:center;gap:6px;border:1px solid #d8e1e6;background:#fff;border-radius:999px;padding:6px 8px;font-size:12px}
+  .ward-chip button{border:0;background:transparent;color:var(--danger);font-weight:900;padding:0 2px}
+  .master-count{font-size:11px;color:var(--muted);margin-top:5px}
+  .catalog-list{display:grid;gap:9px}
+  .catalog-row{
+    display:grid;grid-template-columns:minmax(180px,1.5fr) minmax(95px,.65fr) minmax(110px,.7fr) auto;
+    gap:9px;align-items:center;border:1px solid var(--line);background:#fbfcfd;border-radius:12px;padding:10px
+  }
+  .catalog-row .price{font-weight:900;text-align:right}
+  .repair-parts-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:9px}
+  .repair-parts-table th,.repair-parts-table td{border-bottom:1px solid #e7ecef;padding:7px 6px;text-align:left;vertical-align:middle}
+  .repair-parts-table th{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+  .repair-parts-table input{padding:6px 7px;border-radius:8px}
+  .cost-summary{
+    grid-column:span 2;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;
+    padding:12px;border:1px solid #cfe0e3;border-radius:13px;background:#f3f8f9
+  }
+  .cost-box{background:#fff;border:1px solid #dbe5e8;border-radius:10px;padding:9px}
+  .cost-box .k{font-size:10px;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.05em}
+  .cost-box .v{font-size:16px;font-weight:900;margin-top:4px}
+  .maintenance-box{border:1px solid #cbdfe2;background:#f3f8f9;border-radius:13px;padding:12px;margin:10px 0}
+  .maintenance-box strong{display:block;margin-bottom:5px}
+  .maintenance-components{font-size:12px;line-height:1.55;color:#42545d;margin-top:6px}
+  .cycle-due{font-weight:800}
+  @media(max-width:950px){
+    .layout{grid-template-columns:1fr}aside{position:relative;top:0;height:auto;border-right:0;border-bottom:1px solid var(--line)}
+    .stats{grid-template-columns:repeat(2,1fr)}.brand{min-width:0}.brand small{display:none}
+  }
+  @media(max-width:650px){
+    .topbar{align-items:flex-start}.top-actions{gap:5px}.top-actions .btn{padding:7px 8px;font-size:12px}
+    .stats{grid-template-columns:1fr 1fr}.grid2,.grid3{grid-template-columns:1fr}.span2,.span3{grid-column:auto}
+    main{padding:12px}.cards{grid-template-columns:1fr}
+    .card-actions{grid-template-columns:1fr}
+    .catalog-row{grid-template-columns:1fr}
+    .catalog-row .price{text-align:left}
+    .cost-summary{grid-template-columns:1fr 1fr}
+  }
+  @media print{
+    .topbar,aside,.card-actions,.toolbar .btn,.toolbar select{display:none!important}
+    .layout{display:block}.stats{grid-template-columns:repeat(5,1fr)}
+    main{padding:0}.card{break-inside:avoid;box-shadow:none}
+  }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <div class="logo">M</div>
+    <div><h1>Mediola STATIM Service Manager</h1><small>6 / 12 month inspection & repair tracking</small></div>
+  </div>
+  <div class="top-actions">
+    <select id="langSelect" class="btn" style="width:auto;padding-right:28px">
+      <option value="en">English</option>
+      <option value="hu">Magyar</option>
+    </select>
+    <button class="btn primary" id="addUnitBtn">+ Add unit</button>
+    <button class="btn" id="manageLocationsBtn">Hospitals & wards</button>
+    <button class="btn" id="managePartsBtn">Parts & labour</button>
+    <button class="btn" id="openJsonBtn">Open JSON</button>
+    <button class="btn" id="saveJsonBtn">Save JSON</button>
+    <button class="btn" id="csvBtn">Export CSV</button>
+  </div>
+</header>
+
+<div class="layout">
+<aside>
+  <div class="section-title">Filter</div>
+  <div class="filter"><label>Search</label><input id="search" placeholder="Serial, model, hospital, notes..." /></div>
+  <div class="filter"><label>Hospital</label><select id="hospitalFilter"><option value="">All hospitals</option></select></div>
+  <div class="filter"><label>Department</label><select id="departmentFilter"><option value="">All departments</option></select></div>
+  <div class="filter"><label>Checkup type</label>
+    <select id="intervalFilter"><option value="">6 & 12 month</option><option value="6">6 month</option><option value="12">12 month</option></select>
+  </div>
+  <div class="filter"><label>Due</label>
+    <select id="dueFilter">
+      <option value="all">All</option><option value="overdue">Overdue</option><option value="30">Due in next 30 days</option>
+      <option value="60">Due in next 60 days</option><option value="90">Due in next 90 days</option><option value="none">No due date</option>
+    </select>
+  </div>
+  <div class="filter"><label>Repair status</label>
+    <select id="repairFilter"><option value="">All</option><option value="open">Has open repair</option><option value="none">No open repair</option></select>
+  </div>
+  <div class="filter"><label>Equipment status</label>
+    <select id="unitStatusFilter">
+      <option value="">All equipment statuses</option>
+      <option value="Active">Active</option>
+      <option value="Loaner">Loaner / replacement</option>
+      <option value="Out of service">Out of service</option>
+      <option value="Scrapped">Scrapped</option>
+      <option value="Unknown">Unknown</option>
+    </select>
+  </div>
+  <div class="filter"><label>Record status</label>
+    <select id="archiveFilter"><option value="active">Active only</option><option value="all">Active + archived</option><option value="archived">Archived only</option></select>
+  </div>
+
+  <div class="section-title">Quick views</div>
+  <div class="seg">
+    <button data-quick="overdue">Overdue</button>
+    <button data-quick="30">Next month</button>
+    <button data-quick="repair">Open repairs</button>
+    <button data-quick="all">Everything</button>
+  </div>
+
+  <div class="section-title">Locations</div>
+  <button class="btn ghost" id="manageLocationsSideBtn" style="width:100%">Manage hospitals & wards</button>
+
+  <div class="section-title">Database</div>
+  <div class="filter"><label>Database name</label><input id="dbName" value="Mediola STATIM database" /></div>
+  <div class="side-note">
+    Records autosave locally in this browser. Use <b>Save JSON</b> to create a portable backup/database file and <b>Open JSON</b> on another machine.
+    Photos are compressed and embedded inside the JSON.
+  </div>
+</aside>
+
+<main>
+  <section class="stats">
+    <div class="stat"><div class="n" id="statUnits">0</div><div class="l">Active units</div></div>
+    <div class="stat"><div class="n" id="statOverdue">0</div><div class="l">Overdue checkups</div></div>
+    <div class="stat"><div class="n" id="stat30">0</div><div class="l">Due ≤ 30 days</div></div>
+    <div class="stat"><div class="n" id="statRepairs">0</div><div class="l">Open repairs</div></div>
+    <div class="stat"><div class="n" id="statPhotos">0</div><div class="l">Stored photos</div></div>
+  </section>
+
+  <div class="toolbar">
+    <h2>STATIM units</h2><span class="count" id="resultCount"></span>
+    <div class="spacer"></div>
+    <select id="sortBy" style="width:auto">
+      <option value="due">Sort: next due</option>
+      <option value="hospital">Sort: hospital</option>
+      <option value="model">Sort: model</option>
+      <option value="serial">Sort: serial</option>
+      <option value="updated">Sort: recently updated</option>
+    </select>
+    <button class="btn ghost" onclick="window.print()">Print view</button>
+  </div>
+  <div class="cards" id="cards"></div>
+</main>
+</div>
+
+<input type="file" id="jsonFile" accept=".json,application/json" hidden />
+
+<div class="modal" id="unitModal">
+  <div class="dialog">
+    <div class="dialog-head">
+      <div><h2 id="modalTitle">Unit</h2><div class="sub" id="modalSub"></div></div>
+      <div class="spacer"></div><button class="x" data-close="unitModal">×</button>
+    </div>
+    <div class="tabs" id="tabs">
+      <button class="tab active" data-tab="details">Details</button>
+      <button class="tab" data-tab="checkups">Checkups</button>
+      <button class="tab" data-tab="repairs">Repairs</button>
+      <button class="tab" data-tab="photos">Photos</button>
+      <button class="tab" data-tab="history">Timeline</button>
+    </div>
+
+    <div class="dialog-body">
+      <div class="tabpage active" data-page="details">
+        <div class="notice" style="display:flex;align-items:center;gap:10px">
+          <span style="flex:1">Hospital and ward choices come from the master directory.</span>
+          <button class="btn small brand" type="button" onclick="openLocations()">Manage hospitals & wards</button>
+        </div>
+
+        <div class="section-title" id="identificationTitle">Identification</div>
+        <div class="grid3">
+          <div class="field"><label id="lblUnitId">Mediola Unit ID</label><input id="fUnitId" placeholder="STAT-001" /></div>
+          <div class="field"><label id="lblUnitStatus">Equipment status</label>
+            <select id="fStatus">
+              <option value="Active">Active</option>
+              <option value="Loaner">Loaner / replacement</option>
+              <option value="Out of service">Out of service</option>
+              <option value="Scrapped">Scrapped</option>
+              <option value="Unknown">Unknown</option>
+            </select>
+          </div>
+          <div class="field"><label id="lblManufacturer">Manufacturer</label><input id="fManufacturer" value="SciCan" /></div>
+
+          <div class="field"><label id="lblType">STATIM type</label><input id="fType" list="statimTypeList" placeholder="Choose or type..." /></div>
+          <div class="field"><label id="lblProductNo">Model / product no.</label><input id="fProductNo" list="statimProductList" placeholder="Choose or type..." /></div>
+          <div class="field"><label id="lblSerial">Serial number *</label><input id="fSerial" /></div>
+
+          <div class="field"><label id="lblAsset">Asset / inventory no.</label><input id="fAsset" /></div>
+          <div class="field"><label id="lblTag">Internal / legacy tag</label><input id="fTag" placeholder="e.g. STATIM-PTE-03" /></div>
+        </div>
+
+        <div class="section-title" id="locationTitle">Location & contacts</div>
+        <div class="grid3">
+          <div class="field"><label id="lblHospital">Hospital *</label><select id="fHospital"><option value="">Choose hospital...</option></select></div>
+          <div class="field"><label id="lblDepartment">Ward / department *</label><select id="fDepartment"><option value="">Choose ward...</option></select></div>
+          <div class="field"><label id="lblRoom">Room / location</label><input id="fLocation" /></div>
+          <div class="field"><label id="lblResponsible">Responsible contact</label><input id="fContact" /></div>
+          <div class="field"><label id="lblPhoneEmail">Phone / email</label><input id="fContactInfo" /></div>
+          <div class="field"><label id="lblTechnician">Mediola technician</label><input id="fTechnician" /></div>
+        </div>
+
+        <div class="section-title" id="technicalTitle">Technical data</div>
+        <div class="grid3">
+          <div class="field"><label id="lblManufactured">Manufacturing year / date</label><input id="fManufactured" placeholder="e.g. 2023 or 2023-05-12" /></div>
+          <div class="field"><label id="lblInstalled">Acquisition / installation date</label><input id="fInstalled" type="date" /></div>
+          <div class="field"><label id="lblCycleCount">Current cycle count</label><input id="fCycleCount" type="number" min="0" step="1" /></div>
+          <div class="field"><label id="lblCycleDate">Cycle count date</label><input id="fCycleCountDate" type="date" /></div>
+          <div class="field"><label id="lblSoftware">Current software</label><input id="fSoftware" placeholder="e.g. S5S4R754" /></div>
+          <div class="field"><label id="lblInterfaceFirmware">Interface firmware / IF</label><input id="fInterfaceFirmware" placeholder="e.g. SL12R102" /></div>
+          <div class="field span2"><label id="lblAccessories">Accessories / cassettes</label><textarea id="fAccessories" placeholder="Normal cassette, endo cassette, collection tank..."></textarea></div>
+          <div class="field"><label id="lblCassetteCount">Number of cassettes</label><input id="fCassetteCount" type="number" min="0" step="1" /></div>
+        </div>
+
+        <div class="section-title" id="schedulesTitle">Inspection schedules</div>
+        <div class="grid2">
+          <div class="field"><label id="lblMaintenanceProfile">Maintenance profile</label>
+            <select id="fMaintenanceProfile">
+              <option value="auto">Automatic from STATIM type</option>
+              <option value="statim5000sg4">STATIM 5000S / G4 — 6 months or 500 cycles + annual</option>
+              <option value="calendar">Calendar only — 6 / 12 months</option>
+            </select>
+          </div>
+          <div class="maintenance-box" id="profileSummary"><strong>Maintenance rule</strong><div id="profileSummaryText"></div></div>
+          <div class="checkrow">
+            <input id="fSixEnabled" type="checkbox" checked />
+            <div style="flex:1"><b>6 month checkup</b><div class="sub">Track a recurring 6-month inspection.</div></div>
+          </div>
+          <div class="checkrow">
+            <input id="fTwelveEnabled" type="checkbox" checked />
+            <div style="flex:1"><b>12 month checkup</b><div class="sub">Track a recurring annual inspection.</div></div>
+          </div>
+          <div class="field"><label id="lblLast6">Last 6 month checkup</label><input id="fSixLast" type="date" /></div>
+          <div class="field"><label id="lblNext6">Next 6 month due</label><input id="fSixNext" type="date" /></div>
+          <div class="field"><label id="lblLast6Cycle">Cycles at last 6m/500-cycle service</label><input id="fSixLastCycle" type="number" min="0" step="1" /></div>
+          <div class="field"><label id="lblNext6Cycle">Next cycle service due</label><input id="fSixNextCycle" type="number" min="0" step="1" /></div>
+          <div class="field"><label id="lblLast12">Last annual technician maintenance</label><input id="fTwelveLast" type="date" /></div>
+          <div class="field"><label id="lblNext12">Next annual maintenance due</label><input id="fTwelveNext" type="date" /></div>
+        </div>
+        <div class="pillrow">
+          <button class="btn small ghost" id="calc6">Calculate next 6m from last</button>
+          <button class="btn small ghost" id="calc12">Calculate next 12m from last</button>
+        </div>
+
+        <div class="section-title" id="notesTitle">Notes & legacy data</div>
+        <div class="grid2">
+          <div class="field"><label id="lblUnitNotes">Unit notes</label><textarea id="fNotes"></textarea></div>
+          <div class="field"><label id="lblLegacyNotes">Imported / legacy notes</label><textarea id="fLegacyNotes" placeholder="Optional original text or uncertain historical data"></textarea></div>
+        </div>
+
+        <div class="section-title" id="recordTitle">Record</div>
+        <label class="checkrow"><input id="fArchived" type="checkbox" /><span><b>Archive this unit</b><span class="sub"> Keeps history but hides it from the default active list.</span></span></label>
+      </div>
+
+      <div class="tabpage" data-page="checkups">
+        <div class="notice">Completing a checkup automatically updates the matching last-check date and calculates its next due date. You can override the next due date.</div>
+        <button class="btn brand" id="addCheckBtn">+ Record completed checkup</button>
+        <div class="section-title">Checkup history</div>
+        <div class="history" id="checkHistory"></div>
+      </div>
+
+      <div class="tabpage" data-page="repairs">
+        <button class="btn brand" id="addRepairBtn">+ Add repair / fault</button>
+        <div class="section-title">Repair history</div>
+        <div class="history" id="repairHistory"></div>
+      </div>
+
+      <div class="tabpage" data-page="photos">
+        <div class="drop" id="dropZone">
+          <b>Add photos</b><br><span class="sub">Click or drag images here. Images are resized to max 1600 px and compressed before being embedded in the JSON.</span>
+          <input type="file" id="photoInput" accept="image/*" multiple hidden />
+        </div>
+        <div class="section-title">Stored photos</div>
+        <div class="gallery" id="gallery"></div>
+      </div>
+
+      <div class="tabpage" data-page="history">
+        <table class="mini-table"><thead><tr><th>Date</th><th>Type</th><th>Details</th><th>Technician / status</th></tr></thead><tbody id="timeline"></tbody></table>
+      </div>
+    </div>
+    <div class="footer-actions">
+      <button class="btn danger" id="deleteUnitBtn">Delete unit</button>
+      <div style="flex:1"></div>
+      <button class="btn ghost" data-close="unitModal">Cancel</button>
+      <button class="btn brand" id="saveUnitBtn">Save changes</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="checkModal">
+  <div class="dialog sm">
+    <div class="dialog-head"><h2>Record completed checkup</h2><div class="spacer"></div><button class="x" data-close="checkModal">×</button></div>
+    <div class="dialog-body grid2">
+      <div class="field"><label>Checkup type</label><select id="cType"><option value="6">6 month</option><option value="12">12 month</option></select></div>
+      <div class="field"><label id="lblCheckDate">Checkup date</label><input id="cDate" type="date" /></div>
+      <div class="field"><label id="lblCheckCycles">Cycle count</label><input id="cCycleCount" type="number" min="0" step="1" /></div>
+      <div class="field"><label>Result</label><select id="cResult"><option value="Passed">Passed</option><option value="Passed with notes">Passed with notes</option><option value="Repair required">Repair required</option><option value="Failed">Failed</option></select></div>
+      <div class="field"><label>Mediola technician</label><input id="cTech" /></div>
+      <div class="field"><label>Job sheet / report no.</label><input id="cJob" /></div>
+      <div class="field"><label>Next due (optional override)</label><input id="cNext" type="date" /></div>
+      <div class="field span2"><label>Work performed / findings</label><textarea id="cNotes" placeholder="Inspection, calibration, parts changed, test results..."></textarea></div>
+      <div class="field span2">
+        <label id="lblServiceKit">Scheduled maintenance kit</label>
+        <select id="cServiceKit">
+          <option value="">No automatic kit</option>
+          <option value="SERVICE-KIT-3">SERVICE-KIT-3</option>
+          <option value="SERVICE-KIT-4">SERVICE-KIT-4</option>
+        </select>
+      </div>
+      <div class="maintenance-box span2" id="maintenanceKitBox">
+        <strong id="maintenanceKitTitle">Recommended maintenance</strong>
+        <div id="maintenanceKitDetails"></div>
+        <label class="checkrow" style="margin-top:10px"><input id="cCreateMaintenanceRecord" type="checkbox" checked /><span id="createMaintenanceRecordText">Also create a completed maintenance event with these parts in repair/service history.</span></label>
+      </div>
+    </div>
+    <div class="footer-actions"><button class="btn ghost" data-close="checkModal">Cancel</button><button class="btn brand" id="saveCheckBtn">Save checkup</button></div>
+  </div>
+</div>
+
+<div class="modal" id="repairModal">
+  <div class="dialog">
+    <div class="dialog-head"><h2 id="repairTitle">Add repair / fault</h2><div class="spacer"></div><button class="x" data-close="repairModal">×</button></div>
+    <div class="dialog-body grid2">
+      <div class="field"><label id="lblRepairEventType">Event type</label>
+        <select id="rEventType">
+          <option value="Repair">Repair</option>
+          <option value="Maintenance">Maintenance</option>
+          <option value="Software update">Software update</option>
+          <option value="Cleaning">Cleaning</option>
+          <option value="Inspection-related">Inspection-related</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+      <div class="field"><label>Reported / start date</label><input id="rDate" type="date" /></div>
+      <div class="field"><label>Status</label><select id="rStatus"><option value="Open">Open</option><option value="Waiting for parts">Waiting for parts</option><option value="Sent out">Sent out</option><option value="Completed">Completed</option><option value="Cancelled">Cancelled</option></select></div>
+      <div class="field"><label>Technician</label><input id="rTech" /></div>
+      <div class="field"><label>Completed date</label><input id="rDone" type="date" /></div>
+      <div class="field"><label>Job sheet / repair no.</label><input id="rJob" /></div>
+      <div class="field"><label>Total cost</label><input id="rCost" type="number" step="1" min="0" readonly /></div>
+
+      <div class="field span2"><label>Fault / repair notes</label><textarea id="rNotes"></textarea></div>
+
+      <div class="field span2">
+        <label id="repairPartsLabel">Parts used</label>
+        <div class="grid3">
+          <div class="field span2"><select id="rPartSelect"><option value="">Choose a part...</option></select></div>
+          <div style="display:flex;gap:7px;align-items:end">
+            <div class="field" style="flex:1"><label id="qtyLabel">Qty</label><input id="rPartQty" type="number" min="0.01" step="1" value="1" /></div>
+            <button class="btn brand" id="addRepairPartBtn" type="button" style="height:40px">+ Add</button>
+          </div>
+        </div>
+        <div id="repairPartsTableWrap"></div>
+        <div class="pillrow"><button class="btn small ghost" type="button" id="openPartsFromRepairBtn">Manage parts & labour</button></div>
+      </div>
+
+      <div class="field span2"><label id="additionalPartsLabel">Additional parts / notes</label><textarea id="rParts" placeholder="Non-catalogue parts, serials, notes..."></textarea></div>
+
+      <div class="section-title span2" id="repairCostTitle">Cost calculation</div>
+      <div class="field"><label id="laborHoursLabel">Labour hours</label><input id="rLaborHours" type="number" min="0" step="0.25" value="0" /></div>
+      <div class="field"><label id="hourlyRateLabel">Hourly labour rate</label><input id="rHourlyRate" type="number" min="0" step="1" /></div>
+      <div class="field"><label id="otherCostLabel">Other cost / adjustment</label><input id="rOtherCost" type="number" step="1" value="0" /></div>
+      <div class="field"><label id="costNoteLabel">Cost note</label><input id="rCostNote" placeholder="Optional" /></div>
+
+      <div class="cost-summary">
+        <div class="cost-box"><div class="k" id="partsSubtotalLabel">Parts</div><div class="v" id="rPartsSubtotal">0 Ft</div></div>
+        <div class="cost-box"><div class="k" id="laborSubtotalLabel">Labour</div><div class="v" id="rLaborSubtotal">0 Ft</div></div>
+        <div class="cost-box"><div class="k" id="otherSubtotalLabel">Other</div><div class="v" id="rOtherSubtotal">0 Ft</div></div>
+        <div class="cost-box"><div class="k" id="totalSubtotalLabel">Total</div><div class="v" id="rTotalDisplay">0 Ft</div></div>
+      </div>
+    </div>
+    <div class="footer-actions"><button class="btn ghost" data-close="repairModal">Cancel</button><button class="btn brand" id="saveRepairBtn">Save repair</button></div>
+  </div>
+</div>
+
+<div class="modal" id="partsModal">
+  <div class="dialog">
+    <div class="dialog-head">
+      <div><h2 id="partsModalTitle">Parts & labour</h2><div class="sub" id="partsModalSub">Maintain reusable part prices and the default hourly labour rate.</div></div>
+      <div class="spacer"></div><button class="x" data-close="partsModal">×</button>
+    </div>
+    <div class="dialog-body">
+      <div class="grid3">
+        <div class="field"><label id="defaultRateLabel">Default hourly labour rate</label><input id="catalogHourlyRate" type="number" min="0" step="1" placeholder="HUF / hour" /></div>
+        <div class="field span2"><label id="rateNoteLabel">How it works</label><div class="notice" id="rateHelp" style="margin:0">New repairs use this rate automatically. Each repair keeps its own saved rate, so historical totals do not change later.</div></div>
+      </div>
+      <div class="section-title" id="partCatalogTitle">Part catalogue</div>
+      <div class="grid3">
+        <div class="field"><label id="partNameLabel">Part name *</label><input id="catalogPartName" placeholder="e.g. Cassette seal" /></div>
+        <div class="field"><label id="partNumberLabel">Part number</label><input id="catalogPartNo" placeholder="Optional" /></div>
+        <div class="field"><label id="unitCostLabel">Unit cost</label><input id="catalogPartCost" type="number" min="0" step="1" placeholder="HUF" /></div>
+        <div class="field"><label id="partSupplierLabel">Supplier</label><input id="catalogPartSupplier" placeholder="Optional" /></div>
+        <div class="field span2"><label id="partNotesLabel">Notes</label><input id="catalogPartNotes" placeholder="Compatibility / ordering notes" /></div>
+        <label class="checkrow span3"><input id="catalogPartActive" type="checkbox" checked /><span><b id="partActiveLabel">Active / available</b><span class="sub" id="partActiveHelp"> Inactive parts stay in historical repairs but are hidden from new repair selection.</span></span></label>
+      </div>
+      <div class="pillrow">
+        <button class="btn brand" id="saveCatalogPartBtn">+ Add part</button>
+        <button class="btn ghost" id="cancelCatalogEditBtn" style="display:none">Cancel edit</button>
+      </div>
+      <div class="section-title" id="savedPartsTitle">Saved parts</div>
+      <div class="catalog-list" id="catalogList"></div>
+    </div>
+    <div class="footer-actions">
+      <span class="sub" id="catalogFooterNote" style="margin-right:auto">Prices and labour rate are stored in the same portable JSON database.</span>
+      <button class="btn brand" data-close="partsModal" id="partsDoneBtn">Done</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="locationsModal">
+  <div class="dialog">
+    <div class="dialog-head">
+      <div><h2>Hospitals & wards</h2><div class="sub">Maintain the master list used by unit sheets and dashboard filters.</div></div>
+      <div class="spacer"></div><button class="x" data-close="locationsModal">×</button>
+    </div>
+    <div class="dialog-body">
+      <div class="grid3">
+        <div class="field"><label>Hospital name *</label><input id="locHospitalName" placeholder="e.g. Pécsi Tudományegyetem Klinikai Központ" /></div>
+        <div class="field"><label>City / address</label><input id="locHospitalAddress" placeholder="Optional" /></div>
+        <div class="field"><label>Hospital code / short name</label><input id="locHospitalCode" placeholder="Optional, e.g. PTE KK" /></div>
+        <div class="field"><label>General contact</label><input id="locHospitalContact" placeholder="Optional" /></div>
+        <div class="field"><label>Phone / email</label><input id="locHospitalContactInfo" placeholder="Optional" /></div>
+        <div class="field"><label>Customer / account no.</label><input id="locHospitalAccount" placeholder="Optional" /></div>
+        <div class="field span3"><label>Notes</label><input id="locHospitalNotes" placeholder="Optional contact or service notes" /></div>
+      </div>
+      <div class="pillrow">
+        <button class="btn brand" id="addHospitalBtn">+ Add hospital</button>
+      </div>
+      <div class="section-title">Hospital directory</div>
+      <div class="location-list" id="locationList"></div>
+    </div>
+    <div class="footer-actions">
+      <span class="sub" style="margin-right:auto">Hospitals and wards are stored in the same JSON database as the units.</span>
+      <button class="btn brand" data-close="locationsModal">Done</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="editHospitalModal">
+  <div class="dialog sm">
+    <div class="dialog-head"><h2>Edit hospital</h2><div class="spacer"></div><button class="x" data-close="editHospitalModal">×</button></div>
+    <div class="dialog-body grid2">
+      <div class="field span2"><label>Hospital name *</label><input id="ehName" /></div>
+      <div class="field"><label>City / address</label><input id="ehAddress" /></div>
+      <div class="field"><label>Code / short name</label><input id="ehCode" /></div>
+      <div class="field"><label>General contact</label><input id="ehContact" /></div>
+      <div class="field"><label>Phone / email</label><input id="ehContactInfo" /></div>
+      <div class="field"><label>Customer / account no.</label><input id="ehAccount" /></div>
+      <div class="field span2"><label>Notes</label><textarea id="ehNotes"></textarea></div>
+    </div>
+    <div class="footer-actions"><button class="btn ghost" data-close="editHospitalModal">Cancel</button><button class="btn brand" id="saveHospitalEditBtn">Save hospital</button></div>
+  </div>
+</div>
+
+<div class="modal" id="wardModal">
+  <div class="dialog sm">
+    <div class="dialog-head"><div><h2 id="wardModalTitle">Add ward</h2><div class="sub" id="wardModalSub"></div></div><div class="spacer"></div><button class="x" data-close="wardModal">×</button></div>
+    <div class="dialog-body grid2">
+      <div class="field span2"><label>Ward / department name *</label><input id="wardName" placeholder="e.g. Fogászati és Szájsebészeti Klinika" /></div>
+      <div class="field"><label>Building / floor</label><input id="wardLocation" placeholder="Optional" /></div>
+      <div class="field"><label>Responsible contact</label><input id="wardContact" placeholder="Optional" /></div>
+      <div class="field span2"><label>Phone / email</label><input id="wardContactInfo" placeholder="Optional" /></div>
+      <div class="field span2"><label>Notes</label><textarea id="wardNotes"></textarea></div>
+    </div>
+    <div class="footer-actions"><button class="btn ghost" data-close="wardModal">Cancel</button><button class="btn brand" id="saveWardBtn">Save ward</button></div>
+  </div>
+</div>
+
+<datalist id="statimTypeList">
+  <option value="STATIM 5000"></option>
+  <option value="STATIM 5000S"></option>
+  <option value="STATIM 5000 G4"></option>
+  <option value="STATIM 5000 G4 WiFi"></option>
+  <option value="STATIM 5000S G4"></option>
+  <option value="STATIM 2000"></option>
+  <option value="STATIM 2000S"></option>
+  <option value="STATIM 2000 G4"></option>
+</datalist>
+<datalist id="statimProductList">
+  <option value="01-212318"></option>
+  <option value="01-222318"></option>
+  <option value="01-232318"></option>
+  <option value="202201/2"></option>
+  <option value="202318"></option>
+  <option value="212318"></option>
+  <option value="G4-222306"></option>
+  <option value="G4-222317"></option>
+  <option value="G4-232317"></option>
+  <option value="G4222314"></option>
+</datalist>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+const APP_VERSION = 6;
+const blankDB = () => ({
+  app:"Mediola STATIM Service Manager",
+  version:APP_VERSION,
+  databaseName:"Mediola STATIM database",
+  exportedAt:null,
+  settings:{hourlyRate:0},
+  serviceKits:[
+    {code:"SERVICE-KIT-3",label:"6 month / 500 cycle maintenance",components:[
+      {partNo:"01-101649S",name:"Seal and Lubricant Kit",cassetteQty:true},
+      {partNo:"01-102119S",name:"Filter Biological"},
+      {partNo:"01-101652S",name:"Air Compressor Filter"},
+      {partNo:"01-109300S",name:"Kit Water Reservoir Filter"}
+    ]},
+    {code:"SERVICE-KIT-4",label:"Annual technician maintenance",components:[
+      {partNo:"01-101649S",name:"Seal and Lubricant Kit",cassetteQty:true},
+      {partNo:"01-102119S",name:"Filter Biological"},
+      {partNo:"01-101652S",name:"Air Compressor Filter"},
+      {partNo:"01-109300S",name:"Kit Water Reservoir Filter"},
+      {partNo:"01-100998S",name:"Repair Kit for Solenoid Valve"},
+      {partNo:"01-101627S",name:"Check Valve"},
+      {partNo:"01-104706S",name:"Pressure Transducer Tube",onlyS:true},
+      {partNo:"01-106637S",name:"In-Line Water Filter"}
+    ]}
+  ],
+  partsCatalog:[],
+  locations:[],
+  units:[]
+});
+let db = blankDB();
+let editingId = null;
+let editingRepairId = null;
+let editingHospitalId = null;
+let editingWardHospitalId = null;
+let editingWardId = null;
+let editingCatalogPartId = null;
+let repairPartsDraft = [];
+let fileHandle = null;
+
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const uid = p => p + "_" + Date.now().toString(36) + Math.random().toString(36).slice(2,8);
+
+const I18N = {
+  en: {
+    appTitle:"Mediola STATIM Service Manager",
+    appSub:"Date / cycle maintenance, inspection & repair tracking",
+    addUnit:"+ Add unit", hospitals:"Hospitals & wards", partsLabour:"Parts & labour", openJson:"Open JSON", saveJson:"Save JSON", exportCsv:"Export CSV",
+    filter:"Filter", search:"Search", searchPh:"Serial, model, hospital, notes...", hospital:"Hospital", allHospitals:"All hospitals",
+    department:"Department", allDepartments:"All departments", checkupType:"Checkup type", bothCheckups:"6 & 12 month",
+    due:"Due", all:"All", overdue:"Overdue", next30:"Due in next 30 days", next60:"Due in next 60 days", next90:"Due in next 90 days", noDue:"No due date",
+    repairStatus:"Repair status", allRepairs:"All", hasOpenRepair:"Has open repair", noOpenRepair:"No open repair",
+    equipmentStatus:"Equipment status", allEquipmentStatuses:"All equipment statuses",
+    statusActive:"Active", statusLoaner:"Loaner / replacement", statusOut:"Out of service", statusScrapped:"Scrapped", statusUnknown:"Unknown",
+    recordStatus:"Record status", activeOnly:"Active only", activeArchived:"Active + archived", archivedOnly:"Archived only",
+    quickViews:"Quick views", nextMonth:"Next month", openRepairs:"Open repairs", everything:"Everything",
+    locations:"Locations", manageHospitals:"Manage hospitals & wards", database:"Database", databaseName:"Database name",
+    dbNote:"Records autosave locally in this browser. Use Save JSON to create a portable backup/database file and Open JSON on another machine. Photos are compressed and embedded inside the JSON.",
+    activeUnits:"Tracked units", overdueCheckups:"Overdue maintenance / checkups", due30:"Due ≤ 30 days", storedPhotos:"Stored photos",
+    units:"STATIM units", sortDue:"Sort: next due", sortHospital:"Sort: hospital", sortModel:"Sort: model", sortSerial:"Sort: serial", sortUpdated:"Sort: recently updated", printView:"Print view",
+    details:"Details", checkups:"Checkups", repairs:"Repairs", photos:"Photos", timeline:"Timeline",
+    masterNote:"Hospital and ward choices come from the master directory.", manufacturer:"Manufacturer", model:"Model", serial:"Serial number *",
+    unitId:"Mediola Unit ID", statimType:"STATIM type", productNo:"Model / product no.", manufacturing:"Manufacturing year / date",
+    cycleCount:"Current cycle count", cycleCountDate:"Cycle count date", software:"Current software", interfaceFirmware:"Interface firmware / IF",
+    accessories:"Accessories / cassettes", cassetteCount:"Number of cassettes", maintenanceProfile:"Maintenance profile",
+    profileAuto:"Automatic from STATIM type", profile5000:"STATIM 5000S / G4 — 6 months or 500 cycles + annual", profileCalendar:"Calendar only — 6 / 12 months",
+    maintenanceRule:"Maintenance rule", profileSmartText:"6-month maintenance is due at 6 months OR 500 cycles, whichever comes first. Annual technician maintenance uses SERVICE-KIT-4.",
+    profileCalendarText:"Date-based 6- and 12-month tracking only. No automatic cycle or kit rules.",
+    last6Cycle:"Cycles at last 6m/500-cycle service", next6Cycle:"Next cycle service due", cyclesRemaining:"{n} cycles remaining", cycleDueNow:"Cycle service due now",
+    kitRecommended:"Recommended maintenance", createMaintenanceRecord:"Also create a completed maintenance event with these parts in repair/service history.",
+    noAutomaticKit:"No automatic kit", scheduledKit:"Scheduled maintenance kit", cassetteUnknown:"Cassette count unknown — verify seal quantity.",
+    identification:"Identification", locationContacts:"Location & contacts", technicalData:"Technical data",
+    notesLegacy:"Notes & legacy data", legacyNotes:"Imported / legacy notes",
+    asset:"Asset / inventory no.", assetShort:"Asset no.", lastService:"Last service", installed:"Acquisition / installation date", responsible:"Responsible contact", phoneEmail:"Phone / email",
+    technician:"Mediola technician", internalTag:"Internal / legacy tag", unitNotes:"Unit notes", schedules:"Inspection schedules",
+    sixCheck:"6 month checkup", sixHelp:"Track a recurring 6-month inspection.", twelveCheck:"12 month checkup", twelveHelp:"Track a recurring annual inspection.",
+    last6:"Last 6 month checkup", next6:"Next 6 month due", last12:"Last 12 month checkup", next12:"Next 12 month due",
+    calc6:"Calculate next 6m from last", calc12:"Calculate next 12m from last", record:"Record", archiveUnit:"Archive this unit",
+    archiveHelp:"Keeps history but hides it from the default active list.", deleteUnit:"Delete unit", cancel:"Cancel", saveChanges:"Save changes",
+    completedCheckHelp:"Completing maintenance updates the dates automatically. For STATIM 5000S / G4, the 6-month service is also tracked at +500 cycles, whichever comes first, and SERVICE-KIT-3 / SERVICE-KIT-4 are recommended automatically.",
+    recordCompleted:"+ Record completed checkup", checkHistory:"Checkup history", addRepair:"+ Add repair / fault", repairHistory:"Repair history",
+    addPhotos:"Add photos", photoHelp:"Click or drag images here. Images are resized to max 1600 px and compressed before being embedded in the JSON.",
+    storedPhotosTitle:"Stored photos", date:"Date", type:"Type", detailsCol:"Details", techStatus:"Technician / status",
+    recordCompletedTitle:"Record completed checkup", result:"Result", checkDate:"Checkup date", checkCycles:"Cycle count", jobNo:"Job sheet / report no.", nextDueOverride:"Next due (optional override)",
+    workPerformed:"Work performed / findings", saveCheckup:"Save checkup", repairTitle:"Add repair / fault", editRepair:"Edit repair", reportedDate:"Reported / start date",
+    eventType:"Event type", eventRepair:"Repair", eventMaintenance:"Maintenance", eventSoftware:"Software update", eventCleaning:"Cleaning", eventInspection:"Inspection-related", eventOther:"Other",
+    status:"Status", completedDate:"Completed date", repairNo:"Job sheet / repair no.", cost:"Total cost", faultNotes:"Fault / repair notes",
+    partsUsed:"Parts used", additionalParts:"Additional parts / notes", choosePart:"Choose a part...", qty:"Qty", add:"+ Add",
+    manageParts:"Manage parts & labour", costCalculation:"Cost calculation", laborHours:"Labour hours", hourlyRate:"Hourly labour rate",
+    otherCost:"Other cost / adjustment", costNote:"Cost note", partsSubtotal:"Parts", laborSubtotal:"Labour", otherSubtotal:"Other", total:"Total",
+    saveRepair:"Save repair", partsModalTitle:"Parts & labour", partsModalSub:"Maintain reusable part prices and the default hourly labour rate.",
+    defaultHourlyRate:"Default hourly labour rate", rateHow:"How it works", rateHelp:"New repairs use this rate automatically. Each repair keeps its own saved rate, so historical totals do not change later.",
+    partCatalog:"Part catalogue", partName:"Part name *", partNumber:"Part number", unitCost:"Unit cost", partSupplier:"Supplier", partNotes:"Notes",
+    partActive:"Active / available", partActiveHelp:"Inactive parts remain in historical repairs but are hidden from new repair selection.",
+    inactive:"Inactive", addPart:"+ Add part", savePart:"Save part", cancelEdit:"Cancel edit", savedParts:"Saved parts", noSavedParts:"No parts saved yet.",
+    catalogFooter:"Prices and labour rate are stored in the same portable JSON database.", part:"Part", unitPrice:"Unit price", lineTotal:"Total", remove:"Remove",
+    partsSummary:"Parts", labourSummary:"Labour", hoursShort:"h", hospitalsTitle:"Hospitals & wards", hospitalsSub:"Maintain the master list used by unit sheets and dashboard filters.",
+    hospitalName:"Hospital name *", cityAddress:"City / address", hospitalCode:"Hospital code / short name", generalContact:"General contact",
+    customerAccount:"Customer / account no.", notes:"Notes", addHospital:"+ Add hospital",
+    hospitalDirectory:"Hospital directory", done:"Done", sameJson:"Hospitals and wards are stored in the same JSON database as the units.",
+    editHospital:"Edit hospital", codeShort:"Code / short name", saveHospital:"Save hospital", addWard:"Add ward", wardName:"Ward / department name *",
+    buildingFloor:"Building / floor", contact:"Responsible contact", saveWard:"Save ward", chooseHospital:"Choose hospital...", chooseWard:"Choose ward...",
+    roomLocation:"Room / location", noUnits:"No units match the current filters.", addFirst:"+ Add first unit",
+    noHospitals:"No hospitals added yet.", noHospitalsHelp:"Add a hospital above, then add its wards/departments.",
+    noCheckups:"No checkups recorded yet.", noRepairs:"No repairs recorded for this unit.", noPhotos:"No photos stored for this unit.",
+    passed:"Passed", passedNotes:"Passed with notes", repairRequired:"Repair required", failed:"Failed",
+    open:"Open", waitingParts:"Waiting for parts", sentOut:"Sent out", completed:"Completed", cancelled:"Cancelled",
+    archived:"Archived", noInspection:"No inspection schedule enabled.", noHospital:"No hospital", noDepartment:"No department",
+    noTechnician:"No technician", noDueDate:"No due date", dueToday:"Due today", dueIn:"Due in {n} day", daysOverdue:"{n} day overdue",
+    daysPlural:"{n} days overdue", dueInPlural:"Due in {n} days", openRepairSing:"open repair", openRepairPlur:"open repairs",
+    shown:"shown", total:"total", wardDepartment:"Ward / department *", selectLang:"Language"
+  },
+  hu: {
+    appTitle:"Mediola STATIM Szervizkezelő",
+    appSub:"Dátum- és ciklusalapú karbantartások, felülvizsgálatok és javítások",
+    addUnit:"+ Berendezés", hospitals:"Kórházak és osztályok", partsLabour:"Alkatrészek és munkadíj", openJson:"JSON megnyitása", saveJson:"JSON mentése", exportCsv:"CSV export",
+    filter:"Szűrés", search:"Keresés", searchPh:"Gyári szám, modell, kórház, megjegyzés...", hospital:"Kórház", allHospitals:"Összes kórház",
+    department:"Osztály", allDepartments:"Összes osztály", checkupType:"Felülvizsgálat típusa", bothCheckups:"6 és 12 havi",
+    due:"Esedékesség", all:"Összes", overdue:"Lejárt", next30:"Következő 30 napban esedékes", next60:"Következő 60 napban esedékes", next90:"Következő 90 napban esedékes", noDue:"Nincs esedékességi dátum",
+    repairStatus:"Javítás állapota", allRepairs:"Összes", hasOpenRepair:"Van nyitott javítás", noOpenRepair:"Nincs nyitott javítás",
+    equipmentStatus:"Berendezés állapota", allEquipmentStatuses:"Összes berendezésállapot",
+    statusActive:"Aktív", statusLoaner:"Csere- / kölcsönkészülék", statusOut:"Üzemen kívül", statusScrapped:"Selejtezett", statusUnknown:"Ismeretlen",
+    recordStatus:"Rekord állapota", activeOnly:"Csak aktív", activeArchived:"Aktív + archivált", archivedOnly:"Csak archivált",
+    quickViews:"Gyorsnézetek", nextMonth:"Következő hónap", openRepairs:"Nyitott javítások", everything:"Minden",
+    locations:"Helyszínek", manageHospitals:"Kórházak és osztályok kezelése", database:"Adatbázis", databaseName:"Adatbázis neve",
+    dbNote:"A rekordok automatikusan mentődnek ebben a böngészőben. A JSON mentése gombbal hordozható mentést/adatbázist készíthetsz, amely másik gépen a JSON megnyitása gombbal betölthető. A fotók tömörítve, a JSON fájlba ágyazva tárolódnak.",
+    activeUnits:"Nyilvántartott berendezések", overdueCheckups:"Lejárt karbantartások / felülvizsgálatok", due30:"30 napon belül esedékes", storedPhotos:"Tárolt fotók",
+    units:"STATIM berendezések", sortDue:"Rendezés: következő esedékesség", sortHospital:"Rendezés: kórház", sortModel:"Rendezés: modell", sortSerial:"Rendezés: gyári szám", sortUpdated:"Rendezés: legutóbb frissítve", printView:"Nyomtatás",
+    details:"Adatok", checkups:"Felülvizsgálatok", repairs:"Javítások", photos:"Fotók", timeline:"Idővonal",
+    masterNote:"A kórház- és osztályválaszték a központi helyszínlistából származik.", manufacturer:"Gyártó", model:"Modell", serial:"Gyári szám *",
+    unitId:"Mediola berendezésazonosító", statimType:"STATIM típus", productNo:"Modell / termékszám", manufacturing:"Gyártási év / dátum",
+    cycleCount:"Aktuális ciklusszám", cycleCountDate:"Ciklusszám dátuma", software:"Aktuális szoftver", interfaceFirmware:"Interfész firmware / IF",
+    accessories:"Tartozékok / kazetták", cassetteCount:"Kazetták száma", maintenanceProfile:"Karbantartási profil",
+    profileAuto:"Automatikus a STATIM típus alapján", profile5000:"STATIM 5000S / G4 — 6 hónap vagy 500 ciklus + éves", profileCalendar:"Csak naptári — 6 / 12 hónap",
+    maintenanceRule:"Karbantartási szabály", profileSmartText:"A 6 havi karbantartás 6 hónap VAGY 500 ciklus után esedékes, amelyik előbb bekövetkezik. Az éves technikusi karbantartás SERVICE-KIT-4.",
+    profileCalendarText:"Csak dátumalapú 6 és 12 havi nyilvántartás. Nincs automatikus ciklus- vagy szervizkészlet-szabály.",
+    last6Cycle:"Ciklusszám az utolsó 6 havi / 500 ciklusos szerviznél", next6Cycle:"Következő ciklusos szerviz esedékes", cyclesRemaining:"{n} ciklus van hátra", cycleDueNow:"Ciklusos szerviz esedékes",
+    kitRecommended:"Javasolt karbantartás", createMaintenanceRecord:"A felhasznált alkatrészekkel együtt rögzítsen egy befejezett karbantartási eseményt is a javítás/szerviz előzményekben.",
+    noAutomaticKit:"Nincs automatikus készlet", scheduledKit:"Ütemezett szervizkészlet", cassetteUnknown:"A kazetták száma nincs megadva — a tömítés darabszámát ellenőrizni kell.",
+    identification:"Azonosítás", locationContacts:"Helyszín és kapcsolatok", technicalData:"Műszaki adatok",
+    notesLegacy:"Megjegyzések és régi adatok", legacyNotes:"Importált / régi megjegyzések",
+    asset:"Leltári / eszközszám", assetShort:"Leltári szám", lastService:"Utolsó szerviz", installed:"Beszerzés / telepítés dátuma", responsible:"Kapcsolattartó", phoneEmail:"Telefon / e-mail",
+    technician:"Mediola technikus", internalTag:"Belső / régi azonosító", unitNotes:"Berendezés megjegyzések", schedules:"Felülvizsgálati ütemezés",
+    sixCheck:"6 havi felülvizsgálat", sixHelp:"Ismétlődő 6 havi felülvizsgálat követése.", twelveCheck:"12 havi felülvizsgálat", twelveHelp:"Ismétlődő éves felülvizsgálat követése.",
+    last6:"Utolsó 6 havi felülvizsgálat", next6:"Következő 6 havi esedékesség", last12:"Utolsó 12 havi felülvizsgálat", next12:"Következő 12 havi esedékesség",
+    calc6:"Következő 6 havi számítása", calc12:"Következő 12 havi számítása", record:"Rekord", archiveUnit:"Berendezés archiválása",
+    archiveHelp:"Az előzményeket megtartja, de az alapértelmezett aktív listából elrejti.", deleteUnit:"Berendezés törlése", cancel:"Mégse", saveChanges:"Változtatások mentése",
+    completedCheckHelp:"A karbantartás rögzítése automatikusan frissíti az esedékességeket. STATIM 5000S / G4 esetén a 6 havi szerviz +500 ciklusnál is esedékes, amelyik előbb bekövetkezik; a SERVICE-KIT-3 / SERVICE-KIT-4 automatikusan javasolt.",
+    recordCompleted:"+ Elvégzett felülvizsgálat rögzítése", checkHistory:"Felülvizsgálati előzmények", addRepair:"+ Javítás / hiba felvétele", repairHistory:"Javítási előzmények",
+    addPhotos:"Fotók hozzáadása", photoHelp:"Kattints vagy húzd ide a képeket. A képek max. 1600 px-re lesznek átméretezve és tömörítve, majd a JSON-ba ágyazva mentődnek.",
+    storedPhotosTitle:"Tárolt fotók", date:"Dátum", type:"Típus", detailsCol:"Részletek", techStatus:"Technikus / állapot",
+    recordCompletedTitle:"Elvégzett felülvizsgálat rögzítése", result:"Eredmény", checkDate:"Felülvizsgálat dátuma", checkCycles:"Ciklusszám", jobNo:"Munkalap / jegyzőkönyv száma", nextDueOverride:"Következő esedékesség (opcionális)",
+    workPerformed:"Elvégzett munka / megállapítások", saveCheckup:"Felülvizsgálat mentése", repairTitle:"Javítás / hiba felvétele", editRepair:"Javítás szerkesztése", reportedDate:"Bejelentés / kezdés dátuma",
+    eventType:"Esemény típusa", eventRepair:"Javítás", eventMaintenance:"Karbantartás", eventSoftware:"Szoftverfrissítés", eventCleaning:"Tisztítás", eventInspection:"Felülvizsgálathoz kapcsolódó", eventOther:"Egyéb",
+    status:"Állapot", completedDate:"Befejezés dátuma", repairNo:"Munkalap / javítás száma", cost:"Teljes költség", faultNotes:"Hiba / javítás megjegyzései",
+    partsUsed:"Felhasznált alkatrészek", additionalParts:"További alkatrészek / megjegyzések", choosePart:"Válassz alkatrészt...", qty:"Db", add:"+ Hozzáadás",
+    manageParts:"Alkatrészek és munkadíj kezelése", costCalculation:"Költségszámítás", laborHours:"Munkaórák", hourlyRate:"Óradíj",
+    otherCost:"Egyéb költség / korrekció", costNote:"Költség megjegyzés", partsSubtotal:"Alkatrészek", laborSubtotal:"Munkadíj", otherSubtotal:"Egyéb", total:"Összesen",
+    saveRepair:"Javítás mentése", partsModalTitle:"Alkatrészek és munkadíj", partsModalSub:"Újra felhasználható alkatrészárak és az alapértelmezett óradíj kezelése.",
+    defaultHourlyRate:"Alapértelmezett óradíj", rateHow:"Működés", rateHelp:"Az új javítások automatikusan ezt az óradíjat használják. Minden javítás a saját mentett óradíját őrzi, ezért a korábbi összegek később nem változnak.",
+    partCatalog:"Alkatrészlista", partName:"Alkatrész neve *", partNumber:"Cikkszám", unitCost:"Egységár", partSupplier:"Beszállító", partNotes:"Megjegyzések",
+    partActive:"Aktív / rendelhető", partActiveHelp:"Az inaktív alkatrészek megmaradnak a korábbi javításokban, de új javításnál nem jelennek meg.",
+    inactive:"Inaktív", addPart:"+ Alkatrész hozzáadása", savePart:"Alkatrész mentése", cancelEdit:"Szerkesztés megszakítása", savedParts:"Mentett alkatrészek", noSavedParts:"Még nincs mentett alkatrész.",
+    catalogFooter:"Az alkatrészárak és az óradíj ugyanabban a hordozható JSON adatbázisban tárolódnak.", part:"Alkatrész", unitPrice:"Egységár", lineTotal:"Összeg", remove:"Törlés",
+    partsSummary:"Alkatrész", labourSummary:"Munkadíj", hoursShort:"óra", hospitalsTitle:"Kórházak és osztályok", hospitalsSub:"A berendezéslapok és a műszerfal szűrői által használt központi lista kezelése.",
+    hospitalName:"Kórház neve *", cityAddress:"Város / cím", hospitalCode:"Kórházi kód / rövid név", generalContact:"Általános kapcsolattartó",
+    customerAccount:"Ügyfél- / partnerazonosító", notes:"Megjegyzések", addHospital:"+ Kórház hozzáadása",
+    hospitalDirectory:"Kórházlista", done:"Kész", sameJson:"A kórházak és osztályok ugyanabban a JSON adatbázisban tárolódnak, mint a berendezések.",
+    editHospital:"Kórház szerkesztése", codeShort:"Kód / rövid név", saveHospital:"Kórház mentése", addWard:"Osztály hozzáadása", wardName:"Osztály neve *",
+    buildingFloor:"Épület / emelet", contact:"Felelős kapcsolattartó", saveWard:"Osztály mentése", chooseHospital:"Válassz kórházat...", chooseWard:"Válassz osztályt...",
+    roomLocation:"Helyiség / helyszín", noUnits:"Nincs a szűrőknek megfelelő berendezés.", addFirst:"+ Első berendezés hozzáadása",
+    noHospitals:"Még nincs kórház hozzáadva.", noHospitalsHelp:"Először adj hozzá egy kórházat, majd annak osztályait.",
+    noCheckups:"Még nincs rögzített felülvizsgálat.", noRepairs:"Ehhez a berendezéshez még nincs javítás rögzítve.", noPhotos:"Ehhez a berendezéshez nincs tárolt fotó.",
+    passed:"Megfelelt", passedNotes:"Megfelelt megjegyzéssel", repairRequired:"Javítás szükséges", failed:"Nem felelt meg",
+    open:"Nyitott", waitingParts:"Alkatrészre vár", sentOut:"Külső javításon", completed:"Befejezve", cancelled:"Törölve",
+    archived:"Archivált", noInspection:"Nincs aktív felülvizsgálati ütemezés.", noHospital:"Nincs kórház", noDepartment:"Nincs osztály",
+    noTechnician:"Nincs technikus", noDueDate:"Nincs esedékességi dátum", dueToday:"Ma esedékes", dueIn:"{n} nap múlva esedékes", daysOverdue:"{n} napja lejárt",
+    daysPlural:"{n} napja lejárt", dueInPlural:"{n} nap múlva esedékes", openRepairSing:"nyitott javítás", openRepairPlur:"nyitott javítás",
+    shown:"megjelenítve", total:"összesen", wardDepartment:"Osztály *", selectLang:"Nyelv"
+  }
+};
+let currentLang = localStorage.getItem("mediola_statim_lang") || "en";
+const t = k => I18N[currentLang][k] ?? I18N.en[k] ?? k;
+
+const todayISO = () => new Date().toISOString().slice(0,10);
+const esc = s => String(s??"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const parseDate = s => s ? new Date(s+"T12:00:00") : null;
+const fmt = s => s ? new Intl.DateTimeFormat('en-GB',{day:'2-digit',month:'short',year:'numeric'}).format(parseDate(s)) : "—";
+const daysFromToday = s => s ? Math.ceil((parseDate(s)-parseDate(todayISO()))/86400000) : null;
+const addMonths = (dateStr, months) => {
+  if(!dateStr) return "";
+  const d = parseDate(dateStr), day=d.getDate();
+  d.setDate(1); d.setMonth(d.getMonth()+months);
+  const last=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();
+  d.setDate(Math.min(day,last));
+  return d.toISOString().slice(0,10);
+};
+function effectiveMaintenanceProfile(u){
+  const selected=u?.maintenanceProfile||"auto";
+  if(selected!=="auto") return selected;
+  const typ=String(u?.type||u?.model||"").toUpperCase().replace(/\s+/g," ");
+  return (typ.includes("5000S") || typ.includes("5000 G4")) ? "statim5000sg4" : "calendar";
+}
+function isSType(u){
+  return String(u?.type||u?.model||"").toUpperCase().includes("5000S");
+}
+function serviceKitFor(u,type){
+  if(effectiveMaintenanceProfile(u)!=="statim5000sg4") return "";
+  return String(type)==="6" ? "SERVICE-KIT-3" : String(type)==="12" ? "SERVICE-KIT-4" : "";
+}
+function serviceKitByCode(code){
+  return (db.serviceKits||[]).find(k=>k.code===code)||null;
+}
+function kitComponentsFor(u,code){
+  const kit=serviceKitByCode(code); if(!kit)return [];
+  const cassetteKnown=u?.cassetteCount!=="" && u?.cassetteCount!=null;
+  const cassetteQty=cassetteKnown?Math.max(0,Number(u.cassetteCount)||0):1;
+  return (kit.components||[]).filter(c=>!c.onlyS||isSType(u)).map((c,i)=>{
+    const catalog=(db.partsCatalog||[]).find(p=>String(p.partNo||"").toUpperCase()===String(c.partNo||"").toUpperCase());
+    return {
+      id:uid("usedpart"),catalogId:catalog?.id||"",name:catalog?.name||c.name,partNo:c.partNo||"",
+      unitCost:Number(catalog?.cost)||0,qty:c.cassetteQty?cassetteQty:1
+    };
+  });
+}
+function fillAutomaticDueDates(u){
+  if(!u) return u;
+  u.schedules=u.schedules||{
+    six:{enabled:true,last:"",next:"",lastCycle:"",nextCycle:""},
+    twelve:{enabled:true,last:"",next:""}
+  };
+  u.schedules.six=u.schedules.six||{enabled:true,last:"",next:"",lastCycle:"",nextCycle:""};
+  u.schedules.twelve=u.schedules.twelve||{enabled:true,last:"",next:""};
+  if(u.schedules.six.lastCycle==null)u.schedules.six.lastCycle="";
+  if(u.schedules.six.nextCycle==null)u.schedules.six.nextCycle="";
+
+  if(u.installed){
+    if(u.schedules.six.enabled && !u.schedules.six.last && !u.schedules.six.next)
+      u.schedules.six.next=addMonths(u.installed,6);
+    if(u.schedules.twelve.enabled && !u.schedules.twelve.last && !u.schedules.twelve.next)
+      u.schedules.twelve.next=addMonths(u.installed,12);
+  }
+  if(effectiveMaintenanceProfile(u)==="statim5000sg4" && u.schedules.six.enabled){
+    if(u.schedules.six.lastCycle!=="" && u.schedules.six.lastCycle!=null && (u.schedules.six.nextCycle===""||u.schedules.six.nextCycle==null))
+      u.schedules.six.nextCycle=Math.max(0,Number(u.schedules.six.lastCycle)||0)+500;
+  }
+  return u;
+}
+
+const money = n => (n||n===0) && n!=="" ? new Intl.NumberFormat('hu-HU').format(Number(n))+" Ft" : "—";
+function toast(msg){const t=$("#toast");t.textContent=msg;t.classList.add("show");clearTimeout(t._x);t._x=setTimeout(()=>t.classList.remove("show"),2400);}
+function openModal(id){$("#"+id).classList.add("open")}
+function closeModal(id){$("#"+id).classList.remove("open")}
+$$("[data-close]").forEach(b=>b.onclick=()=>closeModal(b.dataset.close));
+$$(".modal").forEach(m=>m.addEventListener("click",e=>{if(e.target===m) closeModal(m.id)}));
+
+/* IndexedDB autosave */
+const IDB_NAME="mediola_statim_manager", STORE="data", KEY="current";
+function openIDB(){return new Promise((res,rej)=>{const r=indexedDB.open(IDB_NAME,1);r.onupgradeneeded=()=>r.result.createObjectStore(STORE);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
+async function localSave(){
+  db.databaseName=$("#dbName").value||db.databaseName;
+  const x=await openIDB(); const tx=x.transaction(STORE,"readwrite"); tx.objectStore(STORE).put(db,KEY);
+}
+async function localLoad(){
+  try{
+    const x=await openIDB(); const tx=x.transaction(STORE,"readonly"); const r=tx.objectStore(STORE).get(KEY);
+    return await new Promise((res,rej)=>{r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})
+  }catch(e){return null}
+}
+function changed(){
+  localSave();render();
+  if($("#unitModal").classList.contains("open")){
+    const h=$("#fHospital").value,d=$("#fDepartment").value;
+    populateUnitHospitalSelect(h,d);
+  }
+}
+
+/* Due logic */
+function scheduleEntries(u){
+  const arr=[];
+  const smart=effectiveMaintenanceProfile(u)==="statim5000sg4";
+  if(u.schedules?.six?.enabled) arr.push({
+    type:"6",
+    label:smart?(currentLang==="hu"?"6 hónap / 500 ciklus":"6 months / 500 cycles"):(currentLang==="hu"?"6 havi":"6 month"),
+    next:u.schedules.six.next||"",last:u.schedules.six.last||"",
+    lastCycle:u.schedules.six.lastCycle??"",nextCycle:u.schedules.six.nextCycle??"",
+    kit:serviceKitFor(u,"6")
+  });
+  if(u.schedules?.twelve?.enabled) arr.push({
+    type:"12",
+    label:smart?(currentLang==="hu"?"Éves technikusi karbantartás":"Annual technician maintenance"):(currentLang==="hu"?"12 havi":"12 month"),
+    next:u.schedules.twelve.next||"",last:u.schedules.twelve.last||"",
+    kit:serviceKitFor(u,"12")
+  });
+  return arr;
+}
+function dueClass(date){
+  const d=daysFromToday(date);
+  if(d===null) return "none";
+  if(d<0) return "overdue";
+  if(d<=30) return "due";
+  if(d<=60) return "soon";
+  return "ok";
+}
+function dueText(date){
+  const d=daysFromToday(date);
+  if(d===null) return t("noDueDate");
+  if(d<0){
+    const n=Math.abs(d);
+    return (n===1?t("daysOverdue"):t("daysPlural")).replace("{n}",n);
+  }
+  if(d===0) return t("dueToday");
+  return (d===1?t("dueIn"):t("dueInPlural")).replace("{n}",d);
+}
+function cycleRemaining(u,entry){
+  if(entry?.type!=="6" || effectiveMaintenanceProfile(u)!=="statim5000sg4") return null;
+  if(u.cycleCount===""||u.cycleCount==null||entry.nextCycle===""||entry.nextCycle==null) return null;
+  return Number(entry.nextCycle)-Number(u.cycleCount);
+}
+function cycleClass(u,entry){
+  const r=cycleRemaining(u,entry);
+  if(r===null) return "none";
+  if(r<=0) return "overdue";
+  if(r<=100) return "due";
+  if(r<=200) return "soon";
+  return "ok";
+}
+function cycleText(u,entry){
+  const r=cycleRemaining(u,entry);
+  if(r===null) return "";
+  if(r<=0) return t("cycleDueNow");
+  return t("cyclesRemaining").replace("{n}",new Intl.NumberFormat('hu-HU').format(r));
+}
+const severityRank={none:0,ok:1,soon:2,due:3,overdue:4};
+function entrySeverity(u,entry){
+  const a=dueClass(entry.next),b=cycleClass(u,entry);
+  return severityRank[b]>severityRank[a]?b:a;
+}
+function entryDueText(u,entry){
+  const dc=dueClass(entry.next),cc=cycleClass(u,entry);
+  if(severityRank[dc]>severityRank[cc]) return dueText(entry.next);
+  if(severityRank[cc]>severityRank[dc]) return cycleText(u,entry);
+  const ct=cycleText(u,entry),dt=dueText(entry.next);
+  return ct && entry.next ? `${dt} · ${ct}` : (ct||dt);
+}
+function unitSeverity(u){
+  let best="none";
+  scheduleEntries(u).forEach(e=>{const x=entrySeverity(u,e);if(severityRank[x]>severityRank[best])best=x});
+  return best;
+}
+function earliestDue(u){
+  const ds=scheduleEntries(u).filter(x=>x.next).sort((a,b)=>a.next.localeCompare(b.next));
+  return ds[0]||null;
+}
+function dueSortValue(u){
+  const sev=unitSeverity(u);
+  const sevOrder={overdue:0,due:1,soon:2,ok:3,none:4}[sev]??4;
+  const date=earliestDue(u)?.next||"9999-99-99";
+  const six=scheduleEntries(u).find(e=>e.type==="6");
+  const rem=six?cycleRemaining(u,six):null;
+  return [sevOrder,date,rem===null?999999:rem];
+}
+function openRepairs(u){return (u.repairs||[]).filter(r=>!["Completed","Cancelled"].includes(r.status));}
+
+function applyLanguage(){
+  const L=t;
+  document.title=L("appTitle");
+  $(".brand h1").textContent=L("appTitle");
+  $(".brand small").textContent=L("appSub");
+  $("#addUnitBtn").textContent=L("addUnit");
+  $("#manageLocationsBtn").textContent=L("hospitals");
+  $("#managePartsBtn").textContent=L("partsLabour");
+  $("#openJsonBtn").textContent=L("openJson");
+  $("#saveJsonBtn").textContent=L("saveJson");
+  $("#csvBtn").textContent=L("exportCsv");
+  $("#search").placeholder=L("searchPh");
+
+  const sectionTitles=$$(".section-title");
+  const side= $("aside");
+  const labels=side.querySelectorAll(".filter label");
+  labels[0].textContent=L("search");
+  labels[1].textContent=L("hospital");
+  labels[2].textContent=L("department");
+  labels[3].textContent=L("checkupType");
+  labels[4].textContent=L("due");
+  labels[5].textContent=L("repairStatus");
+  labels[6].textContent=L("equipmentStatus");
+  labels[7].textContent=L("recordStatus");
+  labels[8].textContent=L("databaseName");
+
+  side.querySelectorAll(".section-title")[0].textContent=L("filter");
+  side.querySelectorAll(".section-title")[1].textContent=L("quickViews");
+  side.querySelectorAll(".section-title")[2].textContent=L("locations");
+  side.querySelectorAll(".section-title")[3].textContent=L("database");
+  $("#manageLocationsSideBtn").textContent=L("manageHospitals");
+  side.querySelector(".side-note").innerHTML=L("dbNote");
+
+  $("#hospitalFilter").options[0].text=L("allHospitals");
+  $("#departmentFilter").options[0].text=L("allDepartments");
+  $("#intervalFilter").options[0].text=L("bothCheckups");
+  $("#dueFilter").options[0].text=L("all");
+  $("#dueFilter").options[1].text=L("overdue");
+  $("#dueFilter").options[2].text=L("next30");
+  $("#dueFilter").options[3].text=L("next60");
+  $("#dueFilter").options[4].text=L("next90");
+  $("#dueFilter").options[5].text=L("noDue");
+  $("#repairFilter").options[0].text=L("allRepairs");
+  $("#repairFilter").options[1].text=L("hasOpenRepair");
+  $("#repairFilter").options[2].text=L("noOpenRepair");
+  $("#unitStatusFilter").options[0].text=L("allEquipmentStatuses");
+  $("#unitStatusFilter").options[1].text=L("statusActive");
+  $("#unitStatusFilter").options[2].text=L("statusLoaner");
+  $("#unitStatusFilter").options[3].text=L("statusOut");
+  $("#unitStatusFilter").options[4].text=L("statusScrapped");
+  $("#unitStatusFilter").options[5].text=L("statusUnknown");
+  $("#archiveFilter").options[0].text=L("activeOnly");
+  $("#archiveFilter").options[1].text=L("activeArchived");
+  $("#archiveFilter").options[2].text=L("archivedOnly");
+  const quickBtns=$$(".seg button");
+  quickBtns[0].textContent=L("overdue"); quickBtns[1].textContent=L("nextMonth"); quickBtns[2].textContent=L("openRepairs"); quickBtns[3].textContent=L("everything");
+
+  $("#statUnits").nextElementSibling.textContent=L("activeUnits");
+  $("#statOverdue").nextElementSibling.textContent=L("overdueCheckups");
+  $("#stat30").nextElementSibling.textContent=L("due30");
+  $("#statRepairs").nextElementSibling.textContent=L("openRepairs");
+  $("#statPhotos").nextElementSibling.textContent=L("storedPhotos");
+  $(".toolbar h2").textContent=L("units");
+  $("#sortBy").options[0].text=L("sortDue");
+  $("#sortBy").options[1].text=L("sortHospital");
+  $("#sortBy").options[2].text=L("sortModel");
+  $("#sortBy").options[3].text=L("sortSerial");
+  $("#sortBy").options[4].text=L("sortUpdated");
+  $(".toolbar button").textContent=L("printView");
+
+  const tabs=$$("#tabs .tab");
+  [L("details"),L("checkups"),L("repairs"),L("photos"),L("timeline")].forEach((x,i)=>tabs[i].textContent=x);
+
+  const detailPage=$('[data-page="details"]');
+  detailPage.querySelector(".notice span").textContent=L("masterNote");
+  detailPage.querySelector(".notice button").textContent=L("manageHospitals");
+  $("#identificationTitle").textContent=L("identification");
+  $("#locationTitle").textContent=L("locationContacts");
+  $("#technicalTitle").textContent=L("technicalData");
+  $("#schedulesTitle").textContent=L("schedules");
+  $("#notesTitle").textContent=L("notesLegacy");
+  $("#recordTitle").textContent=L("record");
+  $("#lblUnitId").textContent=L("unitId");
+  $("#lblUnitStatus").textContent=L("equipmentStatus");
+  $("#lblManufacturer").textContent=L("manufacturer");
+  $("#lblType").textContent=L("statimType");
+  $("#lblProductNo").textContent=L("productNo");
+  $("#lblSerial").textContent=L("serial");
+  $("#lblAsset").textContent=L("asset");
+  $("#lblTag").textContent=L("internalTag");
+  $("#lblHospital").textContent=L("hospital")+" *";
+  $("#lblDepartment").textContent=L("wardDepartment");
+  $("#lblRoom").textContent=L("roomLocation");
+  $("#lblResponsible").textContent=L("responsible");
+  $("#lblPhoneEmail").textContent=L("phoneEmail");
+  $("#lblTechnician").textContent=L("technician");
+  $("#lblManufactured").textContent=L("manufacturing");
+  $("#lblInstalled").textContent=L("installed");
+  $("#lblCycleCount").textContent=L("cycleCount");
+  $("#lblCycleDate").textContent=L("cycleCountDate");
+  $("#lblSoftware").textContent=L("software");
+  $("#lblInterfaceFirmware").textContent=L("interfaceFirmware");
+  $("#lblAccessories").textContent=L("accessories");
+  $("#lblCassetteCount").textContent=L("cassetteCount");
+  $("#lblMaintenanceProfile").textContent=L("maintenanceProfile");
+  $("#fMaintenanceProfile").options[0].text=L("profileAuto");
+  $("#fMaintenanceProfile").options[1].text=L("profile5000");
+  $("#fMaintenanceProfile").options[2].text=L("profileCalendar");
+  $("#profileSummary strong").textContent=L("maintenanceRule");
+  $("#lblLast6").textContent=L("last6");
+  $("#lblNext6").textContent=L("next6");
+  $("#lblLast6Cycle").textContent=L("last6Cycle");
+  $("#lblNext6Cycle").textContent=L("next6Cycle");
+  $("#lblLast12").textContent=currentLang==="hu"?"Utolsó éves technikusi karbantartás":"Last annual technician maintenance";
+  $("#lblNext12").textContent=currentLang==="hu"?"Következő éves karbantartás":"Next annual maintenance due";
+  $("#lblUnitNotes").textContent=L("unitNotes");
+  $("#lblLegacyNotes").textContent=L("legacyNotes");
+  $("#fType").placeholder=currentLang==="hu"?"Válassz vagy írj be...":"Choose or type...";
+  $("#fProductNo").placeholder=currentLang==="hu"?"Válassz vagy írj be...":"Choose or type...";
+  const statusOpts=$("#fStatus").options;
+  [L("statusActive"),L("statusLoaner"),L("statusOut"),L("statusScrapped"),L("statusUnknown")].forEach((x,i)=>statusOpts[i].text=x);
+  const smartNow=effectiveMaintenanceProfile({type:$("#fType").value,maintenanceProfile:$("#fMaintenanceProfile").value})==="statim5000sg4";
+  detailPage.querySelectorAll(".checkrow b")[0].textContent=smartNow?(currentLang==="hu"?"6 hónap / 500 ciklus":"6 months / 500 cycles"):L("sixCheck");
+  detailPage.querySelectorAll(".checkrow .sub")[0].textContent=smartNow?(currentLang==="hu"?"SERVICE-KIT-3; amelyik előbb bekövetkezik: 6 hónap vagy +500 ciklus.":"SERVICE-KIT-3; whichever comes first: 6 months or +500 cycles."):L("sixHelp");
+  detailPage.querySelectorAll(".checkrow b")[1].textContent=smartNow?(currentLang==="hu"?"Éves technikusi karbantartás":"Annual technician maintenance"):L("twelveCheck");
+  detailPage.querySelectorAll(".checkrow .sub")[1].textContent=smartNow?(currentLang==="hu"?"SERVICE-KIT-4 éves karbantartás.":"Annual SERVICE-KIT-4 maintenance."):L("twelveHelp");
+  $("#calc6").textContent=L("calc6"); $("#calc12").textContent=L("calc12");
+  detailPage.querySelectorAll(".checkrow b")[2].textContent=L("archiveUnit");
+  detailPage.querySelectorAll(".checkrow .sub")[2].textContent=" "+L("archiveHelp");
+  $("#deleteUnitBtn").textContent=L("deleteUnit");
+  $("#saveUnitBtn").textContent=L("saveChanges");
+  $$('#unitModal [data-close="unitModal"]').forEach((b,i)=>{if(b.textContent.trim()!=="×" && i>0)b.textContent=L("cancel")});
+
+  const cp=$('[data-page="checkups"]');
+  cp.querySelector(".notice").textContent=L("completedCheckHelp"); $("#addCheckBtn").textContent=L("recordCompleted");
+  cp.querySelector(".section-title").textContent=L("checkHistory");
+  $("#addRepairBtn").textContent=L("addRepair"); $('[data-page="repairs"] .section-title').textContent=L("repairHistory");
+  $("#dropZone b").textContent=L("addPhotos"); $("#dropZone .sub").textContent=L("photoHelp"); $('[data-page="photos"] .section-title').textContent=L("storedPhotosTitle");
+  const ths=$$('[data-page="history"] th'); [L("date"),L("type"),L("detailsCol"),L("techStatus")].forEach((x,i)=>ths[i].textContent=x);
+
+  $("#checkModal h2").textContent=L("recordCompletedTitle");
+  const cl=$("#checkModal").querySelectorAll(".field label");
+  [L("checkupType"),L("checkDate"),L("checkCycles"),L("result"),L("technician"),L("jobNo"),L("nextDueOverride"),L("workPerformed"),L("scheduledKit")].forEach((x,i)=>{if(cl[i])cl[i].textContent=x});
+  $("#cServiceKit").options[0].text=L("noAutomaticKit");
+  $("#maintenanceKitTitle").textContent=L("kitRecommended");
+  $("#createMaintenanceRecordText").textContent=L("createMaintenanceRecord");
+  $("#saveCheckBtn").textContent=L("saveCheckup");
+  $$('#checkModal [data-close="checkModal"]').forEach(b=>{if(b.textContent.trim()!=="×")b.textContent=L("cancel")});
+
+  $("#repairTitle").textContent=editingRepairId?L("editRepair"):L("repairTitle");
+  $("#lblRepairEventType").textContent=L("eventType");
+  $("#rDate").parentElement.querySelector("label").textContent=L("reportedDate");
+  $("#rStatus").parentElement.querySelector("label").textContent=L("status");
+  $("#rTech").parentElement.querySelector("label").textContent=L("technician");
+  $("#rDone").parentElement.querySelector("label").textContent=L("completedDate");
+  $("#rJob").parentElement.querySelector("label").textContent=L("repairNo");
+  $("#rCost").parentElement.querySelector("label").textContent=L("cost");
+  $("#rNotes").parentElement.querySelector("label").textContent=L("faultNotes");
+  [L("eventRepair"),L("eventMaintenance"),L("eventSoftware"),L("eventCleaning"),L("eventInspection"),L("eventOther")].forEach((x,i)=>$("#rEventType").options[i].text=x);
+  $("#repairPartsLabel").textContent=L("partsUsed");
+  $("#qtyLabel").textContent=L("qty");
+  $("#addRepairPartBtn").textContent=L("add");
+  $("#openPartsFromRepairBtn").textContent=L("manageParts");
+  $("#additionalPartsLabel").textContent=L("additionalParts");
+  $("#repairCostTitle").textContent=L("costCalculation");
+  $("#laborHoursLabel").textContent=L("laborHours");
+  $("#hourlyRateLabel").textContent=L("hourlyRate");
+  $("#otherCostLabel").textContent=L("otherCost");
+  $("#costNoteLabel").textContent=L("costNote");
+  $("#partsSubtotalLabel").textContent=L("partsSubtotal");
+  $("#laborSubtotalLabel").textContent=L("laborSubtotal");
+  $("#otherSubtotalLabel").textContent=L("otherSubtotal");
+  $("#totalSubtotalLabel").textContent=L("total");
+  $("#saveRepairBtn").textContent=L("saveRepair");
+  $$('#repairModal [data-close="repairModal"]').forEach(b=>{if(b.textContent.trim()!=="×")b.textContent=L("cancel")});
+
+  $("#partsModalTitle").textContent=L("partsModalTitle");
+  $("#partsModalSub").textContent=L("partsModalSub");
+  $("#defaultRateLabel").textContent=L("defaultHourlyRate");
+  $("#rateNoteLabel").textContent=L("rateHow");
+  $("#rateHelp").textContent=L("rateHelp");
+  $("#partCatalogTitle").textContent=L("partCatalog");
+  $("#partNameLabel").textContent=L("partName");
+  $("#partNumberLabel").textContent=L("partNumber");
+  $("#unitCostLabel").textContent=L("unitCost");
+  $("#partSupplierLabel").textContent=L("partSupplier");
+  $("#partNotesLabel").textContent=L("partNotes");
+  $("#partActiveLabel").textContent=L("partActive");
+  $("#partActiveHelp").textContent=" "+L("partActiveHelp");
+  $("#saveCatalogPartBtn").textContent=editingCatalogPartId?L("savePart"):L("addPart");
+  $("#cancelCatalogEditBtn").textContent=L("cancelEdit");
+  $("#savedPartsTitle").textContent=L("savedParts");
+  $("#catalogFooterNote").textContent=L("catalogFooter");
+  $("#partsDoneBtn").textContent=L("done");
+
+  $("#locationsModal h2").textContent=L("hospitalsTitle");
+  $("#locationsModal .dialog-head .sub").textContent=L("hospitalsSub");
+  const ll=$("#locationsModal").querySelectorAll(".field label");
+  [L("hospitalName"),L("cityAddress"),L("hospitalCode"),L("generalContact"),L("phoneEmail"),L("customerAccount"),L("notes")].forEach((x,i)=>ll[i].textContent=x);
+  $("#addHospitalBtn").textContent=L("addHospital");
+  $("#locationsModal .section-title").textContent=L("hospitalDirectory");
+  $("#locationsModal .footer-actions .sub").textContent=L("sameJson");
+  $('#locationsModal .footer-actions [data-close="locationsModal"]').textContent=L("done");
+
+  $("#editHospitalModal h2").textContent=L("editHospital");
+  const ehl=$("#editHospitalModal").querySelectorAll(".field label");
+  [L("hospitalName"),L("cityAddress"),L("codeShort"),L("generalContact"),L("phoneEmail"),L("customerAccount"),L("notes")].forEach((x,i)=>ehl[i].textContent=x);
+  $("#saveHospitalEditBtn").textContent=L("saveHospital");
+  $$('#editHospitalModal [data-close="editHospitalModal"]').forEach(b=>{if(b.textContent.trim()!=="×")b.textContent=L("cancel")});
+
+  const wl=$("#wardModal").querySelectorAll(".field label");
+  [L("wardName"),L("buildingFloor"),L("contact"),L("phoneEmail"),L("notes")].forEach((x,i)=>wl[i].textContent=x);
+  $("#saveWardBtn").textContent=L("saveWard");
+  $$('#wardModal [data-close="wardModal"]').forEach(b=>{if(b.textContent.trim()!=="×")b.textContent=L("cancel")});
+
+  $("#cResult").options[0].text=L("passed"); $("#cResult").options[1].text=L("passedNotes"); $("#cResult").options[2].text=L("repairRequired"); $("#cResult").options[3].text=L("failed");
+  $("#rStatus").options[0].text=L("open"); $("#rStatus").options[1].text=L("waitingParts"); $("#rStatus").options[2].text=L("sentOut"); $("#rStatus").options[3].text=L("completed"); $("#rStatus").options[4].text=L("cancelled");
+
+  updateProfileUI();
+  updateMaintenanceKitUI();
+  populateRepairPartSelect();
+  if($("#repairModal").classList.contains("open")) renderRepairPartsDraft();
+  if($("#partsModal").classList.contains("open")) renderPartCatalog();
+
+  populateUnitHospitalSelect($("#fHospital").value||"",$("#fDepartment").value||"");
+  render();
+  if($("#locationsModal").classList.contains("open")) renderLocations();
+  if($("#unitModal").classList.contains("open") && currentUnit()) renderUnitSubsections(currentUnit());
+}
+$("#langSelect").value=currentLang;
+$("#langSelect").addEventListener("change",()=>{
+  currentLang=$("#langSelect").value;
+  localStorage.setItem("mediola_statim_lang",currentLang);
+  applyLanguage();
+});
+
+/* Rendering */
+function masterHospitals(){
+  const byName=new Map();
+  (db.locations||[]).forEach(h=>byName.set(h.name,h));
+  db.units.forEach(u=>{
+    if(!u.hospital)return;
+    if(!byName.has(u.hospital)){
+      byName.set(u.hospital,{id:uid("hospital"),name:u.hospital,address:"",code:"",notes:"",wards:[]});
+    }
+    const h=byName.get(u.hospital);
+    if(u.department && !(h.wards||[]).some(w=>w.name===u.department)){
+      h.wards=h.wards||[];h.wards.push({id:uid("ward"),name:u.department,location:"",contact:"",notes:""});
+    }
+  });
+  db.locations=[...byName.values()].sort((a,b)=>a.name.localeCompare(b.name));
+  return db.locations;
+}
+function rebuildFilters(){
+  const masters=masterHospitals();
+  const hospitals=masters.map(h=>h.name).sort();
+  const selectedH=$("#hospitalFilter").value;
+  $("#hospitalFilter").innerHTML=`<option value="">${t("allHospitals")}</option>`+hospitals.map(x=>`<option ${x===selectedH?"selected":""}>${esc(x)}</option>`).join("");
+  const h=$("#hospitalFilter").value;
+  let deps=[];
+  if(h){
+    deps=(masters.find(x=>x.name===h)?.wards||[]).map(w=>w.name);
+  }else{
+    deps=[...new Set(masters.flatMap(x=>(x.wards||[]).map(w=>w.name)))];
+  }
+  deps=deps.filter(Boolean).sort();
+  const selectedD=$("#departmentFilter").value;
+  $("#departmentFilter").innerHTML=`<option value="">${t("allDepartments")}</option>`+deps.map(x=>`<option ${x===selectedD?"selected":""}>${esc(x)}</option>`).join("");
+  if(selectedD && !deps.includes(selectedD)) $("#departmentFilter").value="";
+}
+function populateUnitHospitalSelect(selectedHospital="",selectedDepartment=""){
+  const masters=masterHospitals();
+  const names=masters.map(h=>h.name).sort();
+  const extras=selectedHospital && !names.includes(selectedHospital) ? [selectedHospital] : [];
+  $("#fHospital").innerHTML=`<option value="">${t("chooseHospital")}</option>`+[...names,...extras].map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join("");
+  $("#fHospital").value=selectedHospital||"";
+  populateUnitWardSelect(selectedDepartment);
+}
+function populateUnitWardSelect(selectedDepartment=""){
+  const hospital=$("#fHospital").value;
+  const h=(db.locations||[]).find(x=>x.name===hospital);
+  const wards=(h?.wards||[]).map(w=>w.name).sort();
+  const extras=selectedDepartment && !wards.includes(selectedDepartment) ? [selectedDepartment] : [];
+  $("#fDepartment").innerHTML=`<option value="">${t("chooseWard")}</option>`+[...wards,...extras].map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join("");
+  $("#fDepartment").value=selectedDepartment||"";
+}
+$("#fHospital").addEventListener("change",()=>populateUnitWardSelect(""));
+function filteredUnits(){
+  const q=$("#search").value.trim().toLowerCase(), h=$("#hospitalFilter").value, dep=$("#departmentFilter").value;
+  const interval=$("#intervalFilter").value, due=$("#dueFilter").value, repair=$("#repairFilter").value, unitStatus=$("#unitStatusFilter").value, arch=$("#archiveFilter").value;
+  return db.units.filter(u=>{
+    if(arch==="active" && u.archived) return false;
+    if(arch==="archived" && !u.archived) return false;
+    if(h && u.hospital!==h) return false;
+    if(dep && u.department!==dep) return false;
+    if(interval && !scheduleEntries(u).some(s=>s.type===interval)) return false;
+    const sched = interval ? scheduleEntries(u).filter(s=>s.type===interval) : scheduleEntries(u);
+    if(due==="overdue" && !sched.some(e=>entrySeverity(u,e)==="overdue")) return false;
+    if(["30","60","90"].includes(due) && !sched.some(e=>{const d=daysFromToday(e.next);return d!==null && d>=0 && d<=Number(due)})) return false;
+    if(due==="none" && !sched.some(e=>!e.next && cycleRemaining(u,e)===null)) return false;
+    const or=openRepairs(u).length;
+    if(repair==="open" && !or) return false;
+    if(repair==="none" && or) return false;
+    if(unitStatus && (u.status||"Active")!==unitStatus) return false;
+    if(q){
+      const hay=JSON.stringify({
+        id:u.unitId,h:u.hospital,d:u.department,l:u.location,type:u.type||u.model,product:u.productNo,s:u.serial,a:u.assetNo,t:u.tag,n:u.notes,legacy:u.legacyNotes,c:u.contact,
+        manufactured:u.manufactured,sw:u.software,ifw:u.interfaceFirmware,accessories:u.accessories,cycles:u.cycleCount,status:u.status,
+        checks:u.checkups?.map(c=>[c.jobNo,c.notes,c.technician,c.cycleCount]), repairs:u.repairs?.map(r=>[r.eventType,r.jobNo,r.notes,r.parts])
+      }).toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  });
+}
+function renderStats(){
+  const active=db.units.filter(u=>!u.archived);
+  let overdue=0,d30=0,photos=0;
+  active.forEach(u=>{
+    scheduleEntries(u).forEach(e=>{
+      if(entrySeverity(u,e)==="overdue") overdue++;
+      const d=daysFromToday(e.next); if(d!==null&&d>=0&&d<=30) d30++;
+    });
+    photos+=(u.photos||[]).length;
+  });
+  $("#statUnits").textContent=active.length; $("#statOverdue").textContent=overdue; $("#stat30").textContent=d30;
+  $("#statRepairs").textContent=active.reduce((n,u)=>n+openRepairs(u).length,0); $("#statPhotos").textContent=photos;
+}
+function render(){
+  rebuildFilters(); renderStats();
+  let units=filteredUnits(), sort=$("#sortBy").value;
+  units.sort((a,b)=>{
+    if(sort==="hospital") return (a.hospital||"").localeCompare(b.hospital||"")||(a.department||"").localeCompare(b.department||"");
+    if(sort==="model") return (a.type||a.model||"").localeCompare(b.type||b.model||"");
+    if(sort==="serial") return (a.serial||"").localeCompare(b.serial||"");
+    if(sort==="updated") return (b.updatedAt||"").localeCompare(a.updatedAt||"");
+    const ak=dueSortValue(a),bk=dueSortValue(b);
+    return ak[0]-bk[0] || ak[1].localeCompare(bk[1]) || ak[2]-bk[2];
+  });
+  $("#resultCount").textContent=`${units.length} ${t("shown")} / ${db.units.length} ${t("total")}`;
+  $("#cards").innerHTML = units.length ? units.map(cardHTML).join("") : `<div class="empty">${t("noUnits")}<br><br><button class="btn brand" onclick="newUnit()">${t("addFirst")}</button></div>`;
+}
+function equipmentStatusText(status){
+  const map={Active:"statusActive",Loaner:"statusLoaner","Out of service":"statusOut",Scrapped:"statusScrapped",Unknown:"statusUnknown"};
+  return t(map[status]||"statusUnknown");
+}
+function cardHTML(u){
+  const cls=unitSeverity(u), repairs=openRepairs(u);
+  const schedule=scheduleEntries(u).map(e=>{
+    const sev=entrySeverity(u,e);
+    const kit=e.kit?` · ${esc(e.kit)}`:"";
+    const dateText=e.next?fmt(e.next):t("noDueDate");
+    return `<div class="due-line">
+      <span><b>${e.label}</b>${kit}<br><span class="sub">${dateText}${e.nextCycle!==""&&e.nextCycle!=null?` · ${currentLang==="hu"?"ciklus":"cycle"} ${new Intl.NumberFormat('hu-HU').format(Number(e.nextCycle))}`:""}</span></span>
+      <span class="badge ${sev}">${entryDueText(u,e)}</span>
+    </div>`;
+  }).join("");
+  const status=u.status||"Active";
+  return `<article class="card due-${cls} ${u.archived?"archived":""}">
+    <div class="stripe ${cls}"></div>
+    <div class="card-top">
+      <div style="flex:1"><h3>${esc(u.type||u.model||"STATIM")} · ${esc(u.serial||"No serial")}</h3>
+        <div class="sub">${esc(u.hospital||t("noHospital"))} → ${esc(u.department||t("noDepartment"))}${u.location?` · ${esc(u.location)}`:""}</div>
+        <div class="pillrow">
+          ${u.unitId?`<span class="badge">${esc(u.unitId)}</span>`:""}
+          ${u.productNo?`<span class="badge">${esc(u.productNo)}</span>`:""}
+          ${status!=="Active"?`<span class="badge repair">${esc(equipmentStatusText(status))}</span>`:""}
+          ${repairs.length?`<span class="badge repair">${repairs.length} ${repairs.length==1?t("openRepairSing"):t("openRepairPlur")}</span>`:""}
+          ${u.archived?`<span class="badge">${t("archived")}</span>`:""}
+        </div>
+      </div>
+    </div>
+    <div class="meta">
+      <div class="meta-box"><div class="k">${t("assetShort")}</div><div class="v">${esc(u.assetNo||"—")}</div></div>
+      <div class="meta-box"><div class="k">${t("cycleCount")}</div><div class="v">${u.cycleCount!==""&&u.cycleCount!=null?new Intl.NumberFormat('hu-HU').format(Number(u.cycleCount)):"—"}</div></div>
+      <div class="meta-box"><div class="k">${t("software")}</div><div class="v">${esc(u.software||"—")}</div></div>
+      <div class="meta-box"><div class="k">${t("lastService")}</div><div class="v">${fmt((u.checkups||[]).sort((a,b)=>b.date.localeCompare(a.date))[0]?.date)}</div></div>
+    </div>
+    <div class="due-list">${schedule||`<div class="sub">${t("noInspection")}</div>`}</div>
+    <div class="card-actions">
+      <button class="btn small brand" onclick="editUnit('${u.id}')">${currentLang==="hu"?"Megnyitás":"Open unit"}</button>
+      <button class="btn small ghost" onclick="quickCheck('${u.id}')">${currentLang==="hu"?"Felülvizsgálat":"Record checkup"}</button>
+      <button class="btn small ghost" onclick="quickRepair('${u.id}')">${currentLang==="hu"?"Javítás hozzáadása":"Add repair"}</button>
+    </div>
+  </article>`;
+}
+/* Unit editing */
+function nextMediolaUnitId(){
+  let max=0;
+  (db.units||[]).forEach(u=>{
+    const m=String(u.unitId||"").match(/^STAT-(\d+)$/i);
+    if(m)max=Math.max(max,Number(m[1]));
+  });
+  return "STAT-"+String(max+1).padStart(3,"0");
+}
+function defaultUnit(){
+  return {id:uid("unit"),unitId:nextMediolaUnitId(),status:"Active",manufacturer:"SciCan",type:"STATIM 5000S",model:"STATIM 5000S",productNo:"",
+    hospital:"",department:"",location:"",serial:"",assetNo:"",manufactured:"",installed:"",cycleCount:"",cycleCountDate:"",
+    software:"",interfaceFirmware:"",accessories:"",cassetteCount:"",maintenanceProfile:"auto",contact:"",contactInfo:"",technician:"",tag:"",notes:"",legacyNotes:"",archived:false,
+    schedules:{six:{enabled:true,last:"",next:"",lastCycle:"",nextCycle:""},twelve:{enabled:true,last:"",next:""}},
+    checkups:[],repairs:[],photos:[],createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};
+}
+function newUnit(){editingId=null; fillUnit(defaultUnit()); $("#deleteUnitBtn").style.display="none"; openModal("unitModal")}
+function editUnit(id){editingId=id; const u=db.units.find(x=>x.id===id); if(!u)return; fillUnit(structuredClone(u)); $("#deleteUnitBtn").style.display=""; openModal("unitModal")}
+function currentUnit(){return editingId?db.units.find(x=>x.id===editingId):null}
+function fillUnit(u){
+  fillAutomaticDueDates(u);
+  const typ=u.type||u.model||"STATIM";
+  $("#modalTitle").textContent=u.serial?`${typ} · ${u.serial}`:(currentLang==="hu"?"Új STATIM berendezés":"New STATIM unit");
+  $("#modalSub").textContent=[u.unitId,u.hospital,u.department].filter(Boolean).join(" · ");
+  $("#fUnitId").value=u.unitId||"";$("#fStatus").value=u.status||"Active";
+  $("#fManufacturer").value=u.manufacturer||"SciCan";$("#fType").value=typ;$("#fProductNo").value=u.productNo||"";$("#fSerial").value=u.serial||"";
+  $("#fAsset").value=u.assetNo||"";$("#fTag").value=u.tag||"";
+  populateUnitHospitalSelect(u.hospital||"",u.department||"");$("#fLocation").value=u.location||"";
+  $("#fContact").value=u.contact||"";$("#fContactInfo").value=u.contactInfo||"";$("#fTechnician").value=u.technician||"";
+  $("#fManufactured").value=u.manufactured||"";$("#fInstalled").value=u.installed||"";
+  $("#fCycleCount").value=u.cycleCount??"";$("#fCycleCountDate").value=u.cycleCountDate||"";
+  $("#fSoftware").value=u.software||"";$("#fInterfaceFirmware").value=u.interfaceFirmware||"";$("#fAccessories").value=u.accessories||"";
+  $("#fCassetteCount").value=u.cassetteCount??"";$("#fMaintenanceProfile").value=u.maintenanceProfile||"auto";
+  $("#fNotes").value=u.notes||"";$("#fLegacyNotes").value=u.legacyNotes||"";
+  $("#fArchived").checked=!!u.archived;
+  $("#fSixEnabled").checked=u.schedules?.six?.enabled!==false;$("#fSixLast").value=u.schedules?.six?.last||"";$("#fSixNext").value=u.schedules?.six?.next||"";
+  $("#fSixLastCycle").value=u.schedules?.six?.lastCycle??"";$("#fSixNextCycle").value=u.schedules?.six?.nextCycle??"";
+  $("#fTwelveEnabled").checked=u.schedules?.twelve?.enabled!==false;$("#fTwelveLast").value=u.schedules?.twelve?.last||"";$("#fTwelveNext").value=u.schedules?.twelve?.next||"";
+  updateProfileUI();
+  renderUnitSubsections(u); switchTab("details");
+}
+function readUnitForm(base){
+  base.unitId=$("#fUnitId").value.trim();base.status=$("#fStatus").value||"Active";
+  base.manufacturer=$("#fManufacturer").value.trim();base.type=$("#fType").value.trim();base.model=base.type;base.productNo=$("#fProductNo").value.trim();
+  base.serial=$("#fSerial").value.trim();base.assetNo=$("#fAsset").value.trim();base.tag=$("#fTag").value.trim();
+  base.hospital=$("#fHospital").value;base.department=$("#fDepartment").value;base.location=$("#fLocation").value.trim();
+  base.contact=$("#fContact").value.trim();base.contactInfo=$("#fContactInfo").value.trim();base.technician=$("#fTechnician").value.trim();
+  base.manufactured=$("#fManufactured").value.trim();base.installed=$("#fInstalled").value;
+  base.cycleCount=$("#fCycleCount").value===""?"":Math.max(0,Number($("#fCycleCount").value)||0);base.cycleCountDate=$("#fCycleCountDate").value;
+  base.software=$("#fSoftware").value.trim();base.interfaceFirmware=$("#fInterfaceFirmware").value.trim();base.accessories=$("#fAccessories").value.trim();
+  base.cassetteCount=$("#fCassetteCount").value===""?"":Math.max(0,Math.floor(Number($("#fCassetteCount").value)||0));base.maintenanceProfile=$("#fMaintenanceProfile").value||"auto";
+  base.notes=$("#fNotes").value.trim();base.legacyNotes=$("#fLegacyNotes").value.trim();base.archived=$("#fArchived").checked;
+  base.schedules=base.schedules||{};
+  base.schedules.six={enabled:$("#fSixEnabled").checked,last:$("#fSixLast").value,next:$("#fSixNext").value,
+    lastCycle:$("#fSixLastCycle").value===""?"":Math.max(0,Number($("#fSixLastCycle").value)||0),
+    nextCycle:$("#fSixNextCycle").value===""?"":Math.max(0,Number($("#fSixNextCycle").value)||0)};
+  base.schedules.twelve={enabled:$("#fTwelveEnabled").checked,last:$("#fTwelveLast").value,next:$("#fTwelveNext").value};
+  fillAutomaticDueDates(base);
+  base.updatedAt=new Date().toISOString(); return base;
+}
+$("#saveUnitBtn").onclick=()=>{
+  let u=editingId?currentUnit():defaultUnit(); readUnitForm(u);
+  if(!u.hospital||!u.department||!u.serial){
+    alert(currentLang==="hu"?"A kórház, osztály és gyári szám kötelező.":"Hospital, department and serial number are required.");return
+  }
+  if(!u.unitId)u.unitId=nextMediolaUnitId();
+  if(db.units.some(x=>x.id!==u.id && x.unitId && x.unitId.toLowerCase()===u.unitId.toLowerCase())){
+    alert(currentLang==="hu"?"Ez a Mediola berendezésazonosító már használatban van.":"This Mediola Unit ID is already in use.");return
+  }
+  if(db.units.some(x=>x.id!==u.id && x.serial && x.serial.toLowerCase()===u.serial.toLowerCase())){
+    alert(currentLang==="hu"?"Ez a gyári szám már egy másik berendezéshez tartozik.":"This serial number is already assigned to another unit.");return
+  }
+  if(!editingId){db.units.push(u);editingId=u.id}
+  changed(); fillUnit(u); $("#deleteUnitBtn").style.display=""; toast(currentLang==="hu"?"Berendezés mentve":"Unit saved");
+};
+$("#deleteUnitBtn").onclick=()=>{
+  const u=currentUnit();if(!u)return;
+  const typ=u.type||u.model||"STATIM";
+  if(confirm(currentLang==="hu"?`Végleg törlöd a(z) ${typ} ${u.serial} berendezést az összes előzménnyel és fotóval együtt?`:`Permanently delete ${typ} ${u.serial} and all its history/photos?`)){
+    db.units=db.units.filter(x=>x.id!==u.id);editingId=null;changed();closeModal("unitModal");toast(currentLang==="hu"?"Berendezés törölve":"Unit deleted")
+  }
+};
+$("#calc6").onclick=()=>$("#fSixNext").value=addMonths($("#fSixLast").value,6);
+$("#calc12").onclick=()=>$("#fTwelveNext").value=addMonths($("#fTwelveLast").value,12);
+
+$("#fInstalled").addEventListener("change",()=>{
+  const d=$("#fInstalled").value;
+  if(!d)return;
+  if(!$("#fSixLast").value)$("#fSixNext").value=addMonths(d,6);
+  if(!$("#fTwelveLast").value)$("#fTwelveNext").value=addMonths(d,12);
+});
+
+function formProfileUnit(){
+  return {type:$("#fType").value,maintenanceProfile:$("#fMaintenanceProfile").value,cassetteCount:$("#fCassetteCount").value};
+}
+function updateProfileUI(){
+  if(!$("#fMaintenanceProfile"))return;
+  const smart=effectiveMaintenanceProfile(formProfileUnit())==="statim5000sg4";
+  $("#profileSummaryText").textContent=smart?t("profileSmartText"):t("profileCalendarText");
+  $("#fSixLastCycle").disabled=!smart;$("#fSixNextCycle").disabled=!smart;
+  if(smart && $("#fSixLastCycle").value!=="" && $("#fSixNextCycle").value==="")
+    $("#fSixNextCycle").value=(Number($("#fSixLastCycle").value)||0)+500;
+  const detailPage=$('[data-page="details"]');
+  if(detailPage){
+    const bs=detailPage.querySelectorAll(".checkrow b"), subs=detailPage.querySelectorAll(".checkrow .sub");
+    if(bs[0])bs[0].textContent=smart?(currentLang==="hu"?"6 hónap / 500 ciklus":"6 months / 500 cycles"):t("sixCheck");
+    if(subs[0])subs[0].textContent=smart?(currentLang==="hu"?"SERVICE-KIT-3; 6 hónap vagy +500 ciklus, amelyik előbb bekövetkezik.":"SERVICE-KIT-3; 6 months or +500 cycles, whichever comes first."):t("sixHelp");
+    if(bs[1])bs[1].textContent=smart?(currentLang==="hu"?"Éves technikusi karbantartás":"Annual technician maintenance"):t("twelveCheck");
+    if(subs[1])subs[1].textContent=smart?(currentLang==="hu"?"SERVICE-KIT-4 éves karbantartás.":"Annual SERVICE-KIT-4 maintenance."):t("twelveHelp");
+  }
+}
+$("#fType").addEventListener("input",updateProfileUI);
+$("#fMaintenanceProfile").addEventListener("change",updateProfileUI);
+$("#fSixLastCycle").addEventListener("change",()=>{if($("#fSixLastCycle").value!=="")$("#fSixNextCycle").value=(Number($("#fSixLastCycle").value)||0)+500});
+
+/* Tabs */
+function switchTab(name){
+  $$("#tabs .tab").forEach(t=>t.classList.toggle("active",t.dataset.tab===name));
+  $$(".tabpage").forEach(p=>p.classList.toggle("active",p.dataset.page===name));
+}
+$$("#tabs .tab").forEach(t=>t.onclick=()=>switchTab(t.dataset.tab));
+
+/* Checkups */
+function quickCheck(id){editUnit(id); openCheckModal()}
+$("#addCheckBtn").onclick=openCheckModal;
+function maintenanceKitText(u,code){
+  if(!code) return currentLang==="hu"?"Ehhez a profilhoz nincs automatikus szervizkészlet.":"No automatic service kit is assigned to this profile.";
+  const components=kitComponentsFor(u,code);
+  const kit=serviceKitByCode(code);
+  let html=`<b>${esc(code)}</b>${kit?.label?` · ${esc(kit.label)}`:""}<div class="maintenance-components">`;
+  html+=components.map(p=>`${esc(p.partNo)} — ${esc(p.name)}${p.qty!==1?` × ${p.qty}`:""}`).join("<br>");
+  if(components.some(p=>p.partNo==="01-104706S"))
+    html+=`<br><span class="sub">${currentLang==="hu"?"01-104706S csak „S” készülékhez.":"01-104706S is included only for “S” units."}</span>`;
+  const cassetteKnown=u.cassetteCount!==""&&u.cassetteCount!=null;
+  if(!cassetteKnown)html+=`<br><span class="badge due">${t("cassetteUnknown")}</span>`;
+  html+="</div>";
+  return html;
+}
+function updateMaintenanceKitUI(autoSelect=false){
+  const u=currentUnit(); if(!u||!$("#cServiceKit"))return;
+  if(autoSelect)$("#cServiceKit").value=serviceKitFor(u,$("#cType").value);
+  $("#maintenanceKitDetails").innerHTML=maintenanceKitText(u,$("#cServiceKit").value);
+}
+function openCheckModal(){
+  const u=currentUnit(); if(!u){alert(currentLang==="hu"?"Előbb mentsd el a berendezést.":"Save the unit first.");return}
+  $("#cType").value="6";$("#cDate").value=todayISO();$("#cCycleCount").value=u.cycleCount??"";$("#cResult").value="Passed";$("#cTech").value=u.technician||"";
+  $("#cJob").value="";$("#cNotes").value="";$("#cNext").value=addMonths(todayISO(),6);
+  $("#cCreateMaintenanceRecord").checked=true;
+  $("#cServiceKit").value=serviceKitFor(u,"6");
+  updateMaintenanceKitUI(false);
+  openModal("checkModal");
+}
+$("#cType").onchange=()=>{
+  $("#cNext").value=addMonths($("#cDate").value,Number($("#cType").value));
+  updateMaintenanceKitUI(true);
+};
+$("#cDate").onchange=()=>$("#cNext").value=addMonths($("#cDate").value,Number($("#cType").value));
+$("#cServiceKit").onchange=()=>updateMaintenanceKitUI(false);
+
+function createMaintenanceHistoryFromCheck(u,c){
+  if(!c.serviceKit || !$("#cCreateMaintenanceRecord").checked)return;
+  const parts=kitComponentsFor(u,c.serviceKit);
+  const partsTotal=parts.reduce((sum,p)=>sum+(Number(p.unitCost)||0)*(Number(p.qty)||0),0);
+  const partsText=parts.map(p=>`${p.name}${p.qty!==1?` × ${p.qty}`:""} (${p.partNo})`).join(", ");
+  u.repairs=u.repairs||[];
+  u.repairs.push({
+    id:uid("repair"),sourceCheckId:c.id,eventType:"Maintenance",date:c.date,status:"Completed",technician:c.technician,
+    completedDate:c.date,jobNo:c.jobNo,cost:partsTotal,
+    notes:`${c.serviceKit} — ${currentLang==="hu"?"ütemezett karbantartás":"scheduled maintenance"}`,
+    parts:partsText,partsUsed:parts,laborHours:0,hourlyRate:Number(db.settings?.hourlyRate)||0,otherCost:0,
+    costNote:partsTotal? "":(currentLang==="hu"?"Az alkatrészárak még nincsenek kitöltve a katalógusban.":"Part prices are not yet filled in the catalogue."),
+    updatedAt:new Date().toISOString()
+  });
+}
+$("#saveCheckBtn").onclick=()=>{
+  const u=currentUnit(); if(!u)return;
+  const type=$("#cType").value,date=$("#cDate").value;if(!date){alert(currentLang==="hu"?"A felülvizsgálat dátuma kötelező.":"Checkup date is required.");return}
+  const cycleRaw=$("#cCycleCount").value;
+  const c={id:uid("check"),type,date,cycleCount:cycleRaw===""?"":Math.max(0,Number(cycleRaw)||0),result:$("#cResult").value,technician:$("#cTech").value.trim(),
+    jobNo:$("#cJob").value.trim(),notes:$("#cNotes").value.trim(),serviceKit:$("#cServiceKit").value,maintenanceComponents:[],createdAt:new Date().toISOString()};
+  c.maintenanceComponents=c.serviceKit?kitComponentsFor(u,c.serviceKit).map(p=>({name:p.name,partNo:p.partNo,qty:p.qty})):[];
+  u.checkups=u.checkups||[];u.checkups.push(c);
+  if(c.cycleCount!==""){u.cycleCount=c.cycleCount;u.cycleCountDate=date}
+
+  const smart=effectiveMaintenanceProfile(u)==="statim5000sg4";
+  if(type==="6"){
+    u.schedules.six.enabled=true;u.schedules.six.last=date;u.schedules.six.next=$("#cNext").value||addMonths(date,6);
+    if(smart){
+      if(c.cycleCount!==""){u.schedules.six.lastCycle=c.cycleCount;u.schedules.six.nextCycle=c.cycleCount+500}
+      else {u.schedules.six.lastCycle="";u.schedules.six.nextCycle=""}
+    }
+  }else{
+    u.schedules.twelve.enabled=true;u.schedules.twelve.last=date;u.schedules.twelve.next=$("#cNext").value||addMonths(date,12);
+    if(smart){
+      // SERVICE-KIT-4 contains the routine 6-month service items, so annual maintenance restarts that schedule too.
+      u.schedules.six.enabled=true;u.schedules.six.last=date;u.schedules.six.next=addMonths(date,6);
+      if(c.cycleCount!==""){u.schedules.six.lastCycle=c.cycleCount;u.schedules.six.nextCycle=c.cycleCount+500}
+      else {u.schedules.six.lastCycle="";u.schedules.six.nextCycle=""}
+    }
+  }
+  createMaintenanceHistoryFromCheck(u,c);
+  u.updatedAt=new Date().toISOString();changed();fillUnit(u);switchTab("checkups");closeModal("checkModal");
+  toast(currentLang==="hu"?"Felülvizsgálat / karbantartás rögzítve":"Checkup / maintenance recorded");
+};
+function deleteCheck(id){
+  const u=currentUnit();if(!u)return;
+  if(!confirm(currentLang==="hu"?"Törlöd ezt a felülvizsgálati bejegyzést? A hozzá automatikusan létrehozott karbantartási esemény is törlődik.":"Delete this checkup entry? Any maintenance event automatically created from it will also be deleted."))return;
+  u.checkups=u.checkups.filter(x=>x.id!==id);u.repairs=(u.repairs||[]).filter(r=>r.sourceCheckId!==id);u.updatedAt=new Date().toISOString();changed();fillUnit(u);switchTab("checkups");
+}
+function renderChecks(u){
+  const x=(u.checkups||[]).slice().sort((a,b)=>b.date.localeCompare(a.date));
+  $("#checkHistory").innerHTML=x.length?x.map(c=>`<div class="history-item">
+    <div class="history-top"><strong>${fmt(c.date)} · ${c.type} ${currentLang==="hu"?"havi felülvizsgálat":"month checkup"}${c.serviceKit?` · ${esc(c.serviceKit)}`:""}</strong><span class="badge ${c.result==="Failed"?"overdue":c.result==="Repair required"?"due":"ok"}">${esc(c.result)}</span></div>
+    <div class="sub">${esc(c.technician||t("noTechnician"))}${c.jobNo?` · ${esc(c.jobNo)}`:""}${c.cycleCount!==""&&c.cycleCount!=null?` · ${t("checkCycles")}: ${new Intl.NumberFormat('hu-HU').format(Number(c.cycleCount))}`:""}</div>
+    ${c.maintenanceComponents?.length?`<div class="history-body"><b>${currentLang==="hu"?"Szervizkészlet tartalma":"Kit contents"}:</b> ${c.maintenanceComponents.map(p=>`${esc(p.partNo)} ${esc(p.name)}${p.qty!==1?` × ${p.qty}`:""}`).join(", ")}</div>`:""}
+    ${c.notes?`<div class="history-body">${esc(c.notes)}</div>`:""}
+    <div class="history-actions"><button class="btn small danger" onclick="deleteCheck('${c.id}')">${currentLang==="hu"?"Törlés":"Delete"}</button></div>
+  </div>`).join(""):`<div class="empty">${t("noCheckups")}</div>`;
+}
+
+/* Repairs */
+function quickRepair(id){editUnit(id);openRepairModal()}
+$("#addRepairBtn").onclick=()=>openRepairModal();
+
+function populateRepairPartSelect(){
+  const sel=$("#rPartSelect");
+  if(!sel)return;
+  const selected=sel.value;
+  const parts=(db.partsCatalog||[]).filter(p=>p.active!==false).slice().sort((a,b)=>a.name.localeCompare(b.name));
+  sel.innerHTML=`<option value="">${t("choosePart")}</option>`+parts.map(p=>`<option value="${p.id}">${esc(p.name)}${p.partNo?` · ${esc(p.partNo)}`:""} · ${money(p.cost||0)}</option>`).join("");
+  if(parts.some(p=>p.id===selected))sel.value=selected;
+}
+function repairPartSubtotal(){
+  return repairPartsDraft.reduce((sum,p)=>sum+(Number(p.unitCost)||0)*(Number(p.qty)||0),0);
+}
+function calculateRepairCost(){
+  const parts=repairPartSubtotal();
+  const hours=Number($("#rLaborHours").value)||0;
+  const rate=Number($("#rHourlyRate").value)||0;
+  const labour=hours*rate;
+  const other=Number($("#rOtherCost").value)||0;
+  const total=parts+labour+other;
+  $("#rPartsSubtotal").textContent=money(parts);
+  $("#rLaborSubtotal").textContent=money(labour);
+  $("#rOtherSubtotal").textContent=money(other);
+  $("#rTotalDisplay").textContent=money(total);
+  $("#rCost").value=Math.round(total);
+  return total;
+}
+function renderRepairPartsDraft(){
+  const wrap=$("#repairPartsTableWrap");if(!wrap)return;
+  if(!repairPartsDraft.length){
+    wrap.innerHTML=`<div class="sub" style="padding:10px 2px">${currentLang==="hu"?"Nincs kiválasztott alkatrész.":"No catalogue parts selected."}</div>`;
+    calculateRepairCost();return;
+  }
+  wrap.innerHTML=`<table class="repair-parts-table">
+    <thead><tr><th>${t("part")}</th><th>${t("qty")}</th><th>${t("unitPrice")}</th><th>${t("lineTotal")}</th><th></th></tr></thead>
+    <tbody>${repairPartsDraft.map(p=>`<tr>
+      <td><b>${esc(p.name)}</b>${p.partNo?`<div class="sub">${esc(p.partNo)}</div>`:""}</td>
+      <td style="width:90px"><input type="number" min="0.01" step="1" value="${Number(p.qty)||1}" onchange="updateRepairPartQty('${p.id}',this.value)"></td>
+      <td style="width:135px"><input type="number" min="0" step="1" value="${Number(p.unitCost)||0}" onchange="updateRepairPartCost('${p.id}',this.value)"></td>
+      <td style="white-space:nowrap;font-weight:800">${money((Number(p.unitCost)||0)*(Number(p.qty)||0))}</td>
+      <td><button class="btn small danger" type="button" onclick="removeRepairPart('${p.id}')">${t("remove")}</button></td>
+    </tr>`).join("")}</tbody>
+  </table>`;
+  calculateRepairCost();
+}
+function updateRepairPartQty(id,value){
+  const p=repairPartsDraft.find(x=>x.id===id);if(!p)return;
+  p.qty=Math.max(.01,Number(value)||1);renderRepairPartsDraft();
+}
+function updateRepairPartCost(id,value){
+  const p=repairPartsDraft.find(x=>x.id===id);if(!p)return;
+  p.unitCost=Math.max(0,Number(value)||0);renderRepairPartsDraft();
+}
+function removeRepairPart(id){repairPartsDraft=repairPartsDraft.filter(x=>x.id!==id);renderRepairPartsDraft()}
+$("#addRepairPartBtn").onclick=()=>{
+  const id=$("#rPartSelect").value;if(!id)return;
+  const src=(db.partsCatalog||[]).find(p=>p.id===id);if(!src)return;
+  const qty=Math.max(.01,Number($("#rPartQty").value)||1);
+  const existing=repairPartsDraft.find(p=>p.catalogId===src.id);
+  if(existing)existing.qty=(Number(existing.qty)||0)+qty;
+  else repairPartsDraft.push({id:uid("usedpart"),catalogId:src.id,name:src.name,partNo:src.partNo||"",unitCost:Number(src.cost)||0,qty});
+  $("#rPartQty").value=1;renderRepairPartsDraft();
+};
+["rLaborHours","rHourlyRate","rOtherCost"].forEach(id=>$("#"+id).addEventListener("input",calculateRepairCost));
+$("#openPartsFromRepairBtn").onclick=()=>openPartsManager();
+
+function openRepairModal(repair=null){
+  const u=currentUnit();if(!u){alert(currentLang==="hu"?"Előbb mentsd el a berendezést.":"Save the unit first.");return}
+  editingRepairId=repair?.id||null;
+  $("#repairTitle").textContent=repair?t("editRepair"):t("repairTitle");
+  $("#rEventType").value=repair?.eventType||"Repair";$("#rDate").value=repair?.date||todayISO();$("#rStatus").value=repair?.status||"Open";$("#rTech").value=repair?.technician||u.technician||"";
+  $("#rDone").value=repair?.completedDate||"";$("#rJob").value=repair?.jobNo||"";
+  $("#rNotes").value=repair?.notes||"";$("#rParts").value=repair?.parts||"";
+  repairPartsDraft=structuredClone(repair?.partsUsed||[]);
+  const hasStructured=!!(repair?.partsUsed?.length || repair?.laborHours || repair?.hourlyRate || repair?.otherCost);
+  $("#rLaborHours").value=repair?.laborHours??0;
+  $("#rHourlyRate").value=repair?.hourlyRate??db.settings?.hourlyRate??0;
+  $("#rOtherCost").value=repair?.otherCost??(!hasStructured && repair?.cost ? repair.cost : 0);
+  $("#rCostNote").value=repair?.costNote||"";
+  populateRepairPartSelect();renderRepairPartsDraft();calculateRepairCost();
+  openModal("repairModal");
+}
+$("#rStatus").onchange=()=>{if($("#rStatus").value==="Completed"&&!$("#rDone").value)$("#rDone").value=todayISO()}
+$("#saveRepairBtn").onclick=()=>{
+  const u=currentUnit();if(!u)return;
+  const total=calculateRepairCost();
+  const data={id:editingRepairId||uid("repair"),eventType:$("#rEventType").value||"Repair",date:$("#rDate").value||todayISO(),status:$("#rStatus").value,technician:$("#rTech").value.trim(),
+    completedDate:$("#rDone").value,jobNo:$("#rJob").value.trim(),cost:Math.round(total),notes:$("#rNotes").value.trim(),parts:$("#rParts").value.trim(),
+    partsUsed:structuredClone(repairPartsDraft),laborHours:Number($("#rLaborHours").value)||0,hourlyRate:Number($("#rHourlyRate").value)||0,
+    otherCost:Number($("#rOtherCost").value)||0,costNote:$("#rCostNote").value.trim(),updatedAt:new Date().toISOString()};
+  u.repairs=u.repairs||[];const i=u.repairs.findIndex(x=>x.id===editingRepairId);if(i>=0)u.repairs[i]=data;else u.repairs.push(data);
+  u.updatedAt=new Date().toISOString();changed();fillUnit(u);switchTab("repairs");closeModal("repairModal");toast(currentLang==="hu"?"Javítás mentve":"Repair saved");
+};
+function editRepair(id){const u=currentUnit(),r=u?.repairs?.find(x=>x.id===id);if(r)openRepairModal(r)}
+function deleteRepair(id){
+  const u=currentUnit();if(!u)return;
+  if(!confirm(currentLang==="hu"?"Törlöd ezt a javítási bejegyzést?":"Delete this repair entry?"))return;
+  u.repairs=u.repairs.filter(x=>x.id!==id);changed();fillUnit(u);switchTab("repairs")
+}
+function repairStatusText(status){
+  const map={Open:"open","Waiting for parts":"waitingParts","Sent out":"sentOut",Completed:"completed",Cancelled:"cancelled"};
+  return t(map[status]||status);
+}
+function repairEventText(eventType){
+  const map={Repair:"eventRepair",Maintenance:"eventMaintenance","Software update":"eventSoftware",Cleaning:"eventCleaning","Inspection-related":"eventInspection",Other:"eventOther"};
+  return t(map[eventType]||"eventRepair");
+}
+function renderRepairs(u){
+  const x=(u.repairs||[]).slice().sort((a,b)=>b.date.localeCompare(a.date));
+  $("#repairHistory").innerHTML=x.length?x.map(r=>{
+    const structured=(r.partsUsed||[]);
+    const partsSummary=structured.length?structured.map(p=>`${esc(p.name)} × ${Number(p.qty)||1}`).join(", "):"";
+    const laborInfo=Number(r.laborHours)>0?`${Number(r.laborHours)} ${t("hoursShort")} × ${money(r.hourlyRate||0)}`:"";
+    return `<div class="history-item">
+      <div class="history-top"><strong>${fmt(r.date)} · ${esc(repairEventText(r.eventType||"Repair"))}${r.jobNo?` · ${esc(r.jobNo)}`:""}</strong><span class="badge ${["Completed","Cancelled"].includes(r.status)?"ok":"repair"}">${esc(repairStatusText(r.status))}</span></div>
+      <div class="sub">${esc(r.technician||t("noTechnician"))}${r.completedDate?` · ${currentLang==="hu"?"befejezve":"completed"} ${fmt(r.completedDate)}`:""}${r.cost!==""&&r.cost!=null?` · <b>${money(r.cost)}</b>`:""}</div>
+      ${r.notes?`<div class="history-body"><b>${currentLang==="hu"?"Hiba / munka":"Fault / work"}:</b> ${esc(r.notes)}</div>`:""}
+      ${partsSummary?`<div class="history-body"><b>${t("partsSummary")}:</b> ${partsSummary}</div>`:""}
+      ${r.parts?`<div class="history-body"><b>${t("additionalParts")}:</b> ${esc(r.parts)}</div>`:""}
+      ${laborInfo?`<div class="history-body"><b>${t("labourSummary")}:</b> ${laborInfo}</div>`:""}
+      ${r.costNote?`<div class="history-body"><b>${t("costNote")}:</b> ${esc(r.costNote)}</div>`:""}
+      <div class="history-actions"><button class="btn small ghost" onclick="editRepair('${r.id}')">${currentLang==="hu"?"Szerkesztés":"Edit"}</button><button class="btn small danger" onclick="deleteRepair('${r.id}')">${currentLang==="hu"?"Törlés":"Delete"}</button></div>
+    </div>`;
+  }).join(""):`<div class="empty">${t("noRepairs")}</div>`;
+}
+
+/* Photos */
+const dz=$("#dropZone"), pi=$("#photoInput");
+dz.onclick=()=>pi.click(); dz.ondragover=e=>{e.preventDefault();dz.classList.add("drag")};dz.ondragleave=()=>dz.classList.remove("drag");
+dz.ondrop=e=>{e.preventDefault();dz.classList.remove("drag");handlePhotos(e.dataTransfer.files)};pi.onchange=()=>handlePhotos(pi.files);
+async function handlePhotos(files){
+  const u=currentUnit();if(!u){alert("Save unit before adding photos.");return}
+  for(const f of [...files]){
+    if(!f.type.startsWith("image/"))continue;
+    try{
+      const dataUrl=await compressImage(f,1600,.72);
+      u.photos=u.photos||[];u.photos.push({id:uid("photo"),name:f.name,caption:"",dataUrl,addedAt:new Date().toISOString()});
+    }catch(e){console.error(e);alert("Could not process "+f.name)}
+  }
+  u.updatedAt=new Date().toISOString();changed();renderUnitSubsections(u);switchTab("photos");pi.value="";toast("Photos added and compressed");
+}
+function compressImage(file,maxDim,quality){
+  return new Promise((resolve,reject)=>{
+    const r=new FileReader();r.onerror=reject;r.onload=()=>{
+      const img=new Image();img.onerror=reject;img.onload=()=>{
+        let w=img.naturalWidth,h=img.naturalHeight,scale=Math.min(1,maxDim/Math.max(w,h));w=Math.round(w*scale);h=Math.round(h*scale);
+        const c=document.createElement("canvas");c.width=w;c.height=h;const x=c.getContext("2d");x.drawImage(img,0,0,w,h);
+        resolve(c.toDataURL("image/jpeg",quality));
+      };img.src=r.result;
+    };r.readAsDataURL(file);
+  });
+}
+function photoCaption(id,val){const u=currentUnit(),p=u?.photos?.find(x=>x.id===id);if(p){p.caption=val;localSave()}}
+function deletePhoto(id){const u=currentUnit();if(!u||!confirm("Remove this photo from the unit and JSON database?"))return;u.photos=u.photos.filter(x=>x.id!==id);changed();renderUnitSubsections(u);switchTab("photos")}
+function openPhoto(id){const p=currentUnit()?.photos?.find(x=>x.id===id);if(p){const w=window.open();w.document.write(`<img src="${p.dataUrl}" style="max-width:100%;height:auto">`)}}
+function renderPhotos(u){
+  $("#gallery").innerHTML=(u.photos||[]).length?(u.photos||[]).map(p=>`<div class="photo">
+    <img src="${p.dataUrl}" onclick="openPhoto('${p.id}')" title="Click to enlarge">
+    <div class="cap"><input value="${esc(p.caption||"")}" placeholder="Photo caption..." oninput="photoCaption('${p.id}',this.value)"></div>
+    <div class="photo-actions"><button class="btn small ghost" onclick="openPhoto('${p.id}')">View</button><button class="btn small danger" onclick="deletePhoto('${p.id}')">Delete</button></div>
+  </div>`).join(""):`<div class="empty" style="grid-column:1/-1">${t("noPhotos")}</div>`;
+}
+function renderTimeline(u){
+  const rows=[];
+  (u.checkups||[]).forEach(c=>rows.push({date:c.date,type:`${c.type} ${currentLang==="hu"?"havi felülvizsgálat":"month checkup"}`,details:[c.cycleCount!==""&&c.cycleCount!=null?`${t("checkCycles")}: ${c.cycleCount}`:"",c.notes||c.jobNo||c.result].filter(Boolean).join(" · "),who:[c.technician,c.result].filter(Boolean).join(" · ")}));
+  (u.repairs||[]).forEach(r=>rows.push({date:r.completedDate||r.date,type:repairEventText(r.eventType||"Repair"),details:r.notes||r.parts||r.jobNo,who:[r.technician,repairStatusText(r.status)].filter(Boolean).join(" · ")}));
+  (u.photos||[]).forEach(p=>rows.push({date:(p.addedAt||"").slice(0,10),type:"Photo",details:p.caption||p.name,who:""}));
+  rows.sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+  $("#timeline").innerHTML=rows.length?rows.map(r=>`<tr><td>${fmt(r.date)}</td><td>${esc(r.type)}</td><td>${esc(r.details||"—")}</td><td>${esc(r.who||"—")}</td></tr>`).join(""):'<tr><td colspan="4">No history yet.</td></tr>';
+}
+function renderUnitSubsections(u){renderChecks(u);renderRepairs(u);renderPhotos(u);renderTimeline(u)}
+
+/* Parts & labour master catalogue */
+function openPartsManager(){
+  editingCatalogPartId=null;
+  $("#catalogHourlyRate").value=db.settings?.hourlyRate??0;
+  clearCatalogPartForm();
+  renderPartCatalog();
+  openModal("partsModal");
+}
+$("#managePartsBtn").onclick=openPartsManager;
+$("#catalogHourlyRate").addEventListener("change",()=>{
+  db.settings=db.settings||{};
+  db.settings.hourlyRate=Math.max(0,Number($("#catalogHourlyRate").value)||0);
+  localSave();
+  if($("#repairModal").classList.contains("open") && !editingRepairId){
+    $("#rHourlyRate").value=db.settings.hourlyRate;
+    calculateRepairCost();
+  }
+  toast(currentLang==="hu"?"Óradíj mentve":"Hourly rate saved");
+});
+function clearCatalogPartForm(){
+  editingCatalogPartId=null;
+  $("#catalogPartName").value="";$("#catalogPartNo").value="";$("#catalogPartCost").value="";$("#catalogPartSupplier").value="";$("#catalogPartNotes").value="";$("#catalogPartActive").checked=true;
+  $("#saveCatalogPartBtn").textContent=t("addPart");$("#cancelCatalogEditBtn").style.display="none";
+}
+$("#cancelCatalogEditBtn").onclick=clearCatalogPartForm;
+$("#saveCatalogPartBtn").onclick=()=>{
+  const name=$("#catalogPartName").value.trim();
+  if(!name){alert(currentLang==="hu"?"Az alkatrész neve kötelező.":"Part name is required.");return}
+  const partNo=$("#catalogPartNo").value.trim(),cost=Math.max(0,Number($("#catalogPartCost").value)||0),supplier=$("#catalogPartSupplier").value.trim(),notes=$("#catalogPartNotes").value.trim(),active=$("#catalogPartActive").checked;
+  db.partsCatalog=db.partsCatalog||[];
+  if(editingCatalogPartId){
+    const p=db.partsCatalog.find(x=>x.id===editingCatalogPartId);if(!p)return;
+    p.name=name;p.partNo=partNo;p.cost=cost;p.supplier=supplier;p.notes=notes;p.active=active;p.updatedAt=new Date().toISOString();
+  }else{
+    db.partsCatalog.push({id:uid("part"),name,partNo,cost,supplier,notes,active,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});
+  }
+  localSave();clearCatalogPartForm();renderPartCatalog();populateRepairPartSelect();
+  toast(currentLang==="hu"?"Alkatrész mentve":"Part saved");
+};
+function editCatalogPart(id){
+  const p=(db.partsCatalog||[]).find(x=>x.id===id);if(!p)return;
+  editingCatalogPartId=id;
+  $("#catalogPartName").value=p.name||"";$("#catalogPartNo").value=p.partNo||"";$("#catalogPartCost").value=p.cost??0;$("#catalogPartSupplier").value=p.supplier||"";$("#catalogPartNotes").value=p.notes||"";$("#catalogPartActive").checked=p.active!==false;
+  $("#saveCatalogPartBtn").textContent=t("savePart");$("#cancelCatalogEditBtn").style.display="";
+}
+function deleteCatalogPart(id){
+  const p=(db.partsCatalog||[]).find(x=>x.id===id);if(!p)return;
+  const used=db.units.reduce((n,u)=>n+(u.repairs||[]).reduce((m,r)=>m+(r.partsUsed||[]).filter(x=>x.catalogId===id).length,0),0);
+  const msg=used
+    ? (currentLang==="hu"?`Az alkatrész ${used} korábbi javításban szerepel. A korábbi javítások mentett árai megmaradnak. Törlöd a listából?`:`This part appears in ${used} historical repair(s). Their saved price snapshots will remain. Delete it from the catalogue?`)
+    : (currentLang==="hu"?`Törlöd ezt az alkatrészt: "${p.name}"?`:`Delete part "${p.name}"?`);
+  if(!confirm(msg))return;
+  db.partsCatalog=db.partsCatalog.filter(x=>x.id!==id);localSave();renderPartCatalog();populateRepairPartSelect();
+  toast(currentLang==="hu"?"Alkatrész törölve":"Part deleted");
+}
+function renderPartCatalog(){
+  const list=$("#catalogList");if(!list)return;
+  $("#catalogHourlyRate").value=db.settings?.hourlyRate??0;
+  const parts=(db.partsCatalog||[]).slice().sort((a,b)=>a.name.localeCompare(b.name));
+  list.innerHTML=parts.length?parts.map(p=>`<div class="catalog-row">
+    <div><b>${esc(p.name)}</b>${p.active===false?` <span class="badge">${t("inactive")}</span>`:""}${p.partNo?`<div class="sub">${esc(p.partNo)}</div>`:""}${p.supplier?`<div class="sub">${t("partSupplier")}: ${esc(p.supplier)}</div>`:""}${p.notes?`<div class="sub">${esc(p.notes)}</div>`:""}</div>
+    <div class="sub">${currentLang==="hu"?"Egységár":"Unit cost"}</div>
+    <div class="price">${money(p.cost||0)}</div>
+    <div class="location-actions"><button class="btn small ghost" onclick="editCatalogPart('${p.id}')">${currentLang==="hu"?"Szerkesztés":"Edit"}</button><button class="btn small danger" onclick="deleteCatalogPart('${p.id}')">${currentLang==="hu"?"Törlés":"Delete"}</button></div>
+  </div>`).join(""):`<div class="empty">${t("noSavedParts")}</div>`;
+}
+
+/* Hospital & ward master directory */
+function renderLocations(){
+  const list=$("#locationList");
+  const locations=(db.locations||[]).slice().sort((a,b)=>a.name.localeCompare(b.name));
+  if(!locations.length){
+    list.innerHTML=`<div class="empty">${t("noHospitals")}<br><br>${t("noHospitalsHelp")}</div>`;
+    return;
+  }
+  list.innerHTML=locations.map(h=>{
+    const units=db.units.filter(u=>u.hospital===h.name);
+    const wardHtml=(h.wards||[]).slice().sort((a,b)=>a.name.localeCompare(b.name)).map(w=>{
+      const count=units.filter(u=>u.department===w.name).length;
+      return `<span class="ward-chip"><b>${esc(w.name)}</b><span class="sub">${count} unit${count===1?"":"s"}</span>
+        <button title="Edit ward" onclick="openWardModal('${h.id}','${w.id}')">✎</button>
+        <button title="Delete ward" onclick="deleteWard('${h.id}','${w.id}')">×</button></span>`;
+    }).join("");
+    return `<div class="location-card">
+      <div class="location-head">
+        <div style="flex:1"><h3>${esc(h.name)}</h3>
+          <div class="sub">${[h.code,h.address].filter(Boolean).map(esc).join(" · ")||(currentLang==="hu"?"Nincs cím/kód megadva":"No address/code entered")}</div>
+          ${h.contact||h.contactInfo||h.accountNo?`<div class="sub">${[h.contact,h.contactInfo,h.accountNo].filter(Boolean).map(esc).join(" · ")}</div>`:""}
+          <div class="master-count">${units.length} ${currentLang==="hu"?"kapcsolt berendezés":"linked unit"+(units.length===1?"":"s")} · ${(h.wards||[]).length} ${currentLang==="hu"?"osztály":"ward"+((h.wards||[]).length===1?"":"s")}</div>
+          ${h.notes?`<div class="history-body">${esc(h.notes)}</div>`:""}
+        </div>
+        <div class="location-actions">
+          <button class="btn small brand" onclick="openWardModal('${h.id}')">+ ${currentLang==="hu"?"Osztály":"Ward"}</button>
+          <button class="btn small ghost" onclick="editHospital('${h.id}')">${currentLang==="hu"?"Szerkesztés":"Edit"}</button>
+          <button class="btn small danger" onclick="deleteHospital('${h.id}')">${currentLang==="hu"?"Törlés":"Delete"}</button>
+        </div>
+      </div>
+      <div class="ward-list">${wardHtml||`<span class="sub">${currentLang==="hu"?"Még nincs osztály — adj hozzá egyet, mielőtt berendezést hozol létre ehhez a kórházhoz.":"No wards yet — add one before creating a unit for this hospital."}</span>`}</div>
+    </div>`;
+  }).join("");
+}
+function openLocations(){
+  masterHospitals();renderLocations();openModal("locationsModal");
+}
+$("#manageLocationsBtn").onclick=openLocations;
+$("#manageLocationsSideBtn").onclick=openLocations;
+$("#addHospitalBtn").onclick=()=>{
+  const name=$("#locHospitalName").value.trim();
+  if(!name){alert("Hospital name is required.");return}
+  if((db.locations||[]).some(h=>h.name.toLowerCase()===name.toLowerCase())){alert("That hospital already exists.");return}
+  db.locations=db.locations||[];
+  db.locations.push({id:uid("hospital"),name,address:$("#locHospitalAddress").value.trim(),code:$("#locHospitalCode").value.trim(),
+    contact:$("#locHospitalContact").value.trim(),contactInfo:$("#locHospitalContactInfo").value.trim(),accountNo:$("#locHospitalAccount").value.trim(),
+    notes:$("#locHospitalNotes").value.trim(),wards:[]});
+  $("#locHospitalName").value="";$("#locHospitalAddress").value="";$("#locHospitalCode").value="";$("#locHospitalContact").value="";$("#locHospitalContactInfo").value="";$("#locHospitalAccount").value="";$("#locHospitalNotes").value="";
+  changed();renderLocations();toast("Hospital added");
+};
+function editHospital(id){
+  const h=(db.locations||[]).find(x=>x.id===id);if(!h)return;
+  editingHospitalId=id;$("#ehName").value=h.name;$("#ehAddress").value=h.address||"";$("#ehCode").value=h.code||"";$("#ehContact").value=h.contact||"";$("#ehContactInfo").value=h.contactInfo||"";$("#ehAccount").value=h.accountNo||"";$("#ehNotes").value=h.notes||"";openModal("editHospitalModal");
+}
+$("#saveHospitalEditBtn").onclick=()=>{
+  const h=(db.locations||[]).find(x=>x.id===editingHospitalId);if(!h)return;
+  const old=h.name, name=$("#ehName").value.trim();
+  if(!name){alert("Hospital name is required.");return}
+  if((db.locations||[]).some(x=>x.id!==h.id&&x.name.toLowerCase()===name.toLowerCase())){alert("Another hospital already uses that name.");return}
+  h.name=name;h.address=$("#ehAddress").value.trim();h.code=$("#ehCode").value.trim();h.contact=$("#ehContact").value.trim();h.contactInfo=$("#ehContactInfo").value.trim();h.accountNo=$("#ehAccount").value.trim();h.notes=$("#ehNotes").value.trim();
+  if(old!==name){
+    db.units.forEach(u=>{if(u.hospital===old)u.hospital=name});
+    if($("#unitModal").classList.contains("open") && $("#fHospital").value===old) $("#fHospital").value=name;
+  }
+  changed();renderLocations();closeModal("editHospitalModal");toast("Hospital updated");
+};
+function deleteHospital(id){
+  const h=(db.locations||[]).find(x=>x.id===id);if(!h)return;
+  const count=db.units.filter(u=>u.hospital===h.name).length;
+  if(count){alert(`This hospital still has ${count} linked unit(s). Move or archive/delete those units before deleting the hospital.`);return}
+  if(confirm(`Delete "${h.name}" and its ward list?`)){db.locations=db.locations.filter(x=>x.id!==id);changed();renderLocations();toast("Hospital deleted")}
+}
+function openWardModal(hospitalId,wardId=null){
+  const h=(db.locations||[]).find(x=>x.id===hospitalId);if(!h)return;
+  editingWardHospitalId=hospitalId;editingWardId=wardId;
+  const w=wardId?(h.wards||[]).find(x=>x.id===wardId):null;
+  $("#wardModalTitle").textContent=w?"Edit ward":"Add ward";
+  $("#wardModalSub").textContent=h.name;
+  $("#wardName").value=w?.name||"";$("#wardLocation").value=w?.location||"";$("#wardContact").value=w?.contact||"";$("#wardContactInfo").value=w?.contactInfo||"";$("#wardNotes").value=w?.notes||"";
+  openModal("wardModal");
+}
+$("#saveWardBtn").onclick=()=>{
+  const h=(db.locations||[]).find(x=>x.id===editingWardHospitalId);if(!h)return;
+  const name=$("#wardName").value.trim();if(!name){alert("Ward / department name is required.");return}
+  h.wards=h.wards||[];
+  if(h.wards.some(w=>w.id!==editingWardId&&w.name.toLowerCase()===name.toLowerCase())){alert("That ward already exists in this hospital.");return}
+  if(editingWardId){
+    const w=h.wards.find(x=>x.id===editingWardId);const old=w.name;
+    w.name=name;w.location=$("#wardLocation").value.trim();w.contact=$("#wardContact").value.trim();w.contactInfo=$("#wardContactInfo").value.trim();w.notes=$("#wardNotes").value.trim();
+    if(old!==name){
+      db.units.forEach(u=>{if(u.hospital===h.name&&u.department===old)u.department=name});
+      if($("#unitModal").classList.contains("open") && $("#fHospital").value===h.name && $("#fDepartment").value===old) $("#fDepartment").value=name;
+    }
+  }else{
+    h.wards.push({id:uid("ward"),name,location:$("#wardLocation").value.trim(),contact:$("#wardContact").value.trim(),contactInfo:$("#wardContactInfo").value.trim(),notes:$("#wardNotes").value.trim()});
+  }
+  changed();renderLocations();closeModal("wardModal");toast(editingWardId?"Ward updated":"Ward added");
+};
+function deleteWard(hospitalId,wardId){
+  const h=(db.locations||[]).find(x=>x.id===hospitalId),w=h?.wards?.find(x=>x.id===wardId);if(!h||!w)return;
+  const count=db.units.filter(u=>u.hospital===h.name&&u.department===w.name).length;
+  if(count){alert(`This ward still has ${count} linked unit(s). Move those units to another ward before deleting it.`);return}
+  if(confirm(`Delete ward "${w.name}"?`)){h.wards=h.wards.filter(x=>x.id!==wardId);changed();renderLocations();toast("Ward deleted")}
+}
+
+/* JSON / CSV */
+$("#openJsonBtn").onclick=async()=>{
+  if(window.showOpenFilePicker){
+    try{
+      const handles=await showOpenFilePicker({multiple:false,types:[{description:"JSON database",accept:{"application/json":[".json"]}}]});
+      fileHandle=handles[0];
+      const f=await fileHandle.getFile();
+      await loadJsonFile(f,true);
+      return;
+    }catch(e){if(e.name==="AbortError")return; console.warn(e)}
+  }
+  $("#jsonFile").click();
+};
+$("#jsonFile").onchange=async()=>{
+  const f=$("#jsonFile").files[0];if(!f)return;
+  await loadJsonFile(f,false);
+  $("#jsonFile").value="";
+};
+async function loadJsonFile(f,keepHandle){
+  try{
+    const j=JSON.parse(await f.text());
+    if(!j || !Array.isArray(j.units)) throw new Error("Not a Mediola STATIM database.");
+    if(!confirm(`Open "${j.databaseName||f.name}" with ${j.units.length} unit(s)? This replaces the current browser copy.`))return;
+    db=j;normalizeDB();db.version=db.version||1;db.databaseName=db.databaseName||f.name.replace(/\.json$/i,"");$("#dbName").value=db.databaseName;
+    if(!keepHandle) fileHandle=null;
+    await localSave();render();toast(keepHandle?"JSON opened — future saves update this file":"JSON database loaded");
+  }catch(e){alert("Could not open JSON: "+e.message)}
+}
+$("#saveJsonBtn").onclick=saveJSON;
+async function saveJSON(){
+  db.databaseName=$("#dbName").value||db.databaseName;db.exportedAt=new Date().toISOString();
+  const text=JSON.stringify(db,null,2);
+  const safe=(db.databaseName||"mediola_statim").replace(/[^\w\-]+/g,"_");
+  try{
+    if(fileHandle){
+      const w=await fileHandle.createWritable();await w.write(text);await w.close();toast("JSON database updated");return;
+    }
+    if(window.showSaveFilePicker){
+      fileHandle=await showSaveFilePicker({suggestedName:safe+".json",types:[{description:"JSON database",accept:{"application/json":[".json"]}}]});
+      const w=await fileHandle.createWritable();await w.write(text);await w.close();toast("JSON database saved — future saves update this file");return;
+    }
+  }catch(e){
+    if(e.name==="AbortError")return;
+    console.warn(e);
+    fileHandle=null;
+  }
+  downloadBlob(new Blob([text],{type:"application/json"}),safe+".json");toast("JSON database downloaded");
+}
+function downloadBlob(blob,name){const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1500)}
+$("#csvBtn").onclick=()=>{
+  const rows=[["Mediola Unit ID","Equipment Status","Hospital","Department","Location","Manufacturer","STATIM Type","Model/Product No","Serial","Asset No",
+    "Manufacturing","Acquisition/Installation","Current Cycles","Cycle Date","Current Software","Interface Firmware","Accessories","Cassette Count","Maintenance Profile",
+    "6m Last","6m Next","6m Last Cycle","6m Next Cycle","12m Last","12m Next","Open Repairs","Technician","Internal/Legacy Tag","Notes","Legacy Notes","Archived"]];
+  db.units.forEach(u=>rows.push([u.unitId,u.status,u.hospital,u.department,u.location,u.manufacturer,u.type||u.model,u.productNo,u.serial,u.assetNo,
+    u.manufactured,u.installed,u.cycleCount,u.cycleCountDate,u.software,u.interfaceFirmware,u.accessories,u.cassetteCount,u.maintenanceProfile,
+    u.schedules?.six?.last,u.schedules?.six?.next,u.schedules?.six?.lastCycle,u.schedules?.six?.nextCycle,u.schedules?.twelve?.last,u.schedules?.twelve?.next,openRepairs(u).length,u.technician,u.tag,u.notes,u.legacyNotes,u.archived?"Yes":"No"]));
+  const csv=rows.map(r=>r.map(v=>`"${String(v??"").replace(/"/g,'""')}"`).join(",")).join("\r\n");
+  downloadBlob(new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8"}),"mediola_statim_units.csv");
+};
+
+/* Filters/events */
+["search","departmentFilter","intervalFilter","dueFilter","repairFilter","unitStatusFilter","archiveFilter","sortBy"].forEach(id=>$("#"+id).addEventListener(id==="search"?"input":"change",render));
+$("#hospitalFilter").onchange=()=>{rebuildFilters();render()};
+$("#dbName").onchange=()=>{db.databaseName=$("#dbName").value;localSave()};
+$$("[data-quick]").forEach(b=>b.onclick=()=>{
+  const q=b.dataset.quick;$("#dueFilter").value=q==="overdue"?"overdue":q==="30"?"30":"all";$("#repairFilter").value=q==="repair"?"open":"";
+  $$("#aside .seg button").forEach?.(()=>{});
+  $$(".seg button").forEach(x=>x.classList.toggle("active",x===b));render();
+});
+
+/* Seed sample helper intentionally not auto-used */
+function builtInServiceKits(){
+  return [
+    {code:"SERVICE-KIT-3",label:"6 month / 500 cycle maintenance",components:[
+      {partNo:"01-101649S",name:"Seal and Lubricant Kit",cassetteQty:true},
+      {partNo:"01-102119S",name:"Filter Biological"},
+      {partNo:"01-101652S",name:"Air Compressor Filter"},
+      {partNo:"01-109300S",name:"Kit Water Reservoir Filter"}
+    ]},
+    {code:"SERVICE-KIT-4",label:"Annual technician maintenance",components:[
+      {partNo:"01-101649S",name:"Seal and Lubricant Kit",cassetteQty:true},
+      {partNo:"01-102119S",name:"Filter Biological"},
+      {partNo:"01-101652S",name:"Air Compressor Filter"},
+      {partNo:"01-109300S",name:"Kit Water Reservoir Filter"},
+      {partNo:"01-100998S",name:"Repair Kit for Solenoid Valve"},
+      {partNo:"01-101627S",name:"Check Valve"},
+      {partNo:"01-104706S",name:"Pressure Transducer Tube",onlyS:true},
+      {partNo:"01-106637S",name:"In-Line Water Filter"}
+    ]}
+  ];
+}
+function ensureMaintenanceParts(){
+  const required=[
+    ["01-101649S","Seal and Lubricant Kit"],
+    ["01-102119S","Filter Biological"],
+    ["01-101652S","Air Compressor Filter"],
+    ["01-109300S","Kit Water Reservoir Filter"],
+    ["01-100998S","Repair Kit for Solenoid Valve"],
+    ["01-101627S","Check Valve"],
+    ["01-104706S","Pressure Transducer Tube"],
+    ["01-106637S","In-Line Water Filter"]
+  ];
+  db.partsCatalog=db.partsCatalog||[];
+  required.forEach(([partNo,name])=>{
+    let p=db.partsCatalog.find(x=>String(x.partNo||"").toUpperCase()===partNo);
+    if(p){p.name=name;p.partNo=partNo;if(p.active==null)p.active=true}
+    else db.partsCatalog.push({id:uid("part"),name,partNo,cost:0,supplier:"",notes:"Scheduled STATIM maintenance component.",active:true,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});
+  });
+}
+function inferCassetteCount(text){
+  const t=String(text||"").toLowerCase();
+  if(!t)return "";
+  if(t.includes("tartozékok nélkül")||t==="nem jöttek")return 0;
+  let total=0,found=false;
+  const specific=[/(\d+)\s*(?:db\s*)?norm(?:ál)?\s*kaz/g,/(\d+)\s*(?:db\s*)?endo/g];
+  specific.forEach(rx=>{let m;while((m=rx.exec(t))){total+=Number(m[1]);found=true}});
+  if(found)return total;
+  const g=t.match(/(\d+)\s*(?:db\s*)?kazett/);if(g)return Number(g[1]);
+  if(/norm(?:ál)?\s*kaz/.test(t))total++;
+  if(/endo(?:\s*kaz(?:etta)?)?/.test(t) && t.includes("endo"))total++;
+  return total||"";
+}
+
+function normalizeDB(){
+  db.units=db.units||[];
+  db.settings=db.settings||{hourlyRate:0};
+  if(db.settings.hourlyRate==null)db.settings.hourlyRate=0;
+  if(!Array.isArray(db.serviceKits)||!db.serviceKits.length)db.serviceKits=builtInServiceKits();
+  db.partsCatalog=db.partsCatalog||[];
+  db.partsCatalog.forEach(p=>{p.id=p.id||uid("part");p.cost=Number(p.cost)||0;if(p.supplier==null)p.supplier="";if(p.active==null)p.active=true});
+  ensureMaintenanceParts();
+  db.locations=db.locations||[];
+  db.locations.forEach(h=>{
+    h.id=h.id||uid("hospital");if(h.contact==null)h.contact="";if(h.contactInfo==null)h.contactInfo="";if(h.accountNo==null)h.accountNo="";
+    h.wards=h.wards||[];h.wards.forEach(w=>{w.id=w.id||uid("ward");if(w.contactInfo==null)w.contactInfo=""});
+  });
+  let autoIdCounter=1;
+  const usedUnitIds=new Set(db.units.map(u=>String(u.unitId||"").toLowerCase()).filter(Boolean));
+  const allocLegacyId=()=>{let id;do{id="STAT-"+String(autoIdCounter++).padStart(3,"0")}while(usedUnitIds.has(id.toLowerCase()));usedUnitIds.add(id.toLowerCase());return id};
+  db.units.forEach(u=>{
+    if(!u.unitId)u.unitId=allocLegacyId();
+    if(!u.status)u.status="Active";
+    if(!u.type)u.type=u.model||"";
+    u.model=u.type;
+    if(u.productNo==null)u.productNo="";
+    if(u.manufactured==null)u.manufactured="";
+    if(u.cycleCount==null)u.cycleCount="";
+    if(u.cycleCountDate==null)u.cycleCountDate="";
+    if(u.software==null)u.software="";
+    if(u.interfaceFirmware==null)u.interfaceFirmware="";
+    if(u.accessories==null)u.accessories="";
+    if(u.cassetteCount==null)u.cassetteCount=inferCassetteCount(u.accessories);
+    if(u.maintenanceProfile==null)u.maintenanceProfile="auto";
+    if(u.legacyNotes==null)u.legacyNotes="";
+    u.schedules=u.schedules||{six:{enabled:true,last:"",next:"",lastCycle:"",nextCycle:""},twelve:{enabled:true,last:"",next:""}};
+    u.schedules.six=u.schedules.six||{enabled:false,last:"",next:"",lastCycle:"",nextCycle:""};
+    if(u.schedules.six.lastCycle==null)u.schedules.six.lastCycle="";
+    if(u.schedules.six.nextCycle==null)u.schedules.six.nextCycle="";
+    u.schedules.twelve=u.schedules.twelve||{enabled:false,last:"",next:""};
+    u.checkups=u.checkups||[];u.repairs=u.repairs||[];u.photos=u.photos||[];
+    u.checkups.forEach(c=>{if(c.cycleCount==null)c.cycleCount="";if(c.serviceKit==null)c.serviceKit="";if(c.maintenanceComponents==null)c.maintenanceComponents=[]});
+    u.repairs.forEach(r=>{
+      if(!r.eventType)r.eventType="Repair";
+      r.partsUsed=r.partsUsed||[];
+      r.partsUsed.forEach(p=>{p.id=p.id||uid("usedpart");p.qty=Number(p.qty)||1;p.unitCost=Number(p.unitCost)||0});
+      if(r.laborHours==null)r.laborHours=0;
+      if(r.hourlyRate==null)r.hourlyRate=0;
+      if(r.otherCost==null)r.otherCost=0;
+      if(r.costNote==null)r.costNote="";
+    });
+    fillAutomaticDueDates(u);
+  });
+  masterHospitals();
+}
+$("#addUnitBtn").onclick=newUnit;
+
+/* Startup */
+(async()=>{
+  const saved=await localLoad();
+  if(saved){db=saved}else db=blankDB();
+  normalizeDB();
+  $("#dbName").value=db.databaseName||"Mediola STATIM database";
+  $("#langSelect").value=currentLang;
+  applyLanguage();
+})();
+</script>
+</body>
+</html>
