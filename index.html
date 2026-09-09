@@ -258,6 +258,20 @@
       <button class="btn primary" id="setPasswordBtn" type="button">Set password and continue</button>
     </div>
 
+    <div id="cloudSetupPanel" style="display:none">
+      <h1>Initialize shared database</h1>
+      <div class="auth-sub">
+        Supabase is connected, but the shared STATIM database is still empty.
+        Load the populated Mediola JSON once to create the shared database.
+      </div>
+      <div class="auth-info">
+        This is a one-time setup. After initialization, all signed-in PCs load and save the same Supabase data.
+      </div>
+      <input id="cloudSetupFile" type="file" accept=".json,application/json" hidden />
+      <button class="btn primary" id="cloudSetupImportBtn" type="button">Choose JSON and initialize cloud</button>
+      <div class="auth-error" id="cloudSetupError"></div>
+    </div>
+
     <div id="authLoading">
       <h1>STATIM Service Manager</h1>
       <div class="auth-info">Checking your Mediola login…</div>
@@ -272,7 +286,7 @@
   </div>
   <div class="top-actions">
     <div class="user-strip" id="userStrip" style="display:none">
-      <span class="cloud-state" id="cloudState">Authenticated · local data for now</span>
+      <span class="cloud-state" id="cloudState">Connecting to shared database…</span>
       <span class="user-email" id="userEmail"></span>
       <button class="btn small" id="signOutBtn" type="button">Sign out</button>
     </div>
@@ -718,7 +732,16 @@ let sb = null;
 let authSession = null;
 let appStarted = false;
 
-const APP_VERSION = 7;
+let cloudReady = false;
+let cloudVersion = null;
+let cloudUpdatedAt = "";
+let cloudSaveTimer = null;
+let cloudSaveInFlight = false;
+let cloudSaveQueued = false;
+let cloudConflict = false;
+let suppressCloudSave = false;
+
+const APP_VERSION = 8;
 const blankDB = () => ({
   app:"Mediola STATIM Service Manager",
   version:APP_VERSION,
@@ -775,7 +798,7 @@ const I18N = {
     recordStatus:"Record status", activeOnly:"Active only", activeArchived:"Active + archived", archivedOnly:"Archived only",
     quickViews:"Quick views", nextMonth:"Next month", openRepairs:"Open repairs", everything:"Everything",
     locations:"Locations", manageHospitals:"Manage hospitals & wards", database:"Database", databaseName:"Database name",
-    dbNote:"Records autosave locally in this browser. Use Save JSON to create a portable backup/database file and Open JSON on another machine. Photos are compressed and embedded inside the JSON.",
+    dbNote:"Signed-in PCs load and autosave the same Supabase database. JSON remains available for backup/restore. A local browser cache is also kept as an emergency fallback.",
     activeUnits:"Tracked units", overdueCheckups:"Overdue maintenance / checkups", due30:"Due ≤ 30 days", storedPhotos:"Stored photos",
     units:"STATIM units", sortDue:"Sort: next due", sortHospital:"Sort: hospital", sortModel:"Sort: model", sortSerial:"Sort: serial", sortUpdated:"Sort: recently updated", printView:"Print view",
     details:"Details", checkups:"Checkups", repairs:"Repairs", photos:"Photos", timeline:"Timeline",
@@ -988,7 +1011,9 @@ async function localLoad(){
   }catch(e){return null}
 }
 function changed(){
-  localSave();render();
+  localSave();
+  if(cloudReady && !suppressCloudSave) queueCloudSave();
+  render();
   if($("#unitModal").classList.contains("open")){
     const h=$("#fHospital").value,d=$("#fDepartment").value;
     populateUnitHospitalSelect(h,d);
@@ -2056,10 +2081,19 @@ async function loadJsonFile(f,keepHandle){
   try{
     const j=JSON.parse(await f.text());
     if(!j || !Array.isArray(j.units)) throw new Error("Not a Mediola STATIM database.");
-    if(!confirm(`Open "${j.databaseName||f.name}" with ${j.units.length} unit(s)? This replaces the current browser copy.`))return;
-    db=j;normalizeDB();db.version=db.version||1;db.databaseName=db.databaseName||f.name.replace(/\.json$/i,"");$("#dbName").value=db.databaseName;
+    const warning=cloudReady
+      ? `Open "${j.databaseName||f.name}" with ${j.units.length} unit(s)?\n\nThis will replace the SHARED Supabase database for all signed-in PCs.`
+      : `Open "${j.databaseName||f.name}" with ${j.units.length} unit(s)? This replaces the current browser copy.`;
+    if(!confirm(warning))return;
+    db=j;normalizeDB();db.version=APP_VERSION;db.databaseName=db.databaseName||f.name.replace(/\.json$/i,"");$("#dbName").value=db.databaseName;
     if(!keepHandle) fileHandle=null;
-    await localSave();render();toast(keepHandle?"JSON opened — future saves update this file":"JSON database loaded");
+    await localSave();render();
+    if(cloudReady){
+      queueCloudSave();
+      toast("JSON loaded — saving to shared database");
+    }else{
+      toast(keepHandle?"JSON opened":"JSON database loaded");
+    }
   }catch(e){alert("Could not open JSON: "+e.message)}
 }
 $("#saveJsonBtn").onclick=saveJSON;
@@ -2219,27 +2253,187 @@ function showAuthError(id,msg){
 function showAuthPanel(name){
   $("#loginPanel").style.display=name==="login"?"":"none";
   $("#passwordPanel").style.display=name==="password"?"":"none";
+  $("#cloudSetupPanel").style.display=name==="cloudSetup"?"":"none";
   $("#authLoading").style.display=name==="loading"?"":"none";
   $("#authGate").classList.remove("hidden");
 }
 function hideAuthGate(){$("#authGate").classList.add("hidden")}
 
+function setCloudState(text,mode="normal"){
+  const el=$("#cloudState"); if(!el)return;
+  el.textContent=text;
+  el.style.background=mode==="error"?"#fff1f1":mode==="saving"?"#fff7df":"#edf3f4";
+  el.style.color=mode==="error"?"#8e2f2f":mode==="saving"?"#805b12":"#53676e";
+  el.style.borderColor=mode==="error"?"#e6bcbc":mode==="saving"?"#e6cf8f":"#d2dfe1";
+}
+function cloudPayloadLooksInitialized(data){
+  return !!data && Array.isArray(data.units);
+}
+async function fetchCloudRow(){
+  const {data,error}=await sb
+    .from("app_state")
+    .select("id,data,version,updated_at,updated_by")
+    .eq("id","main")
+    .single();
+  if(error)throw error;
+  return data;
+}
+async function applyCloudRow(row){
+  if(!row || !cloudPayloadLooksInitialized(row.data))return false;
+  suppressCloudSave=true;
+  try{
+    db=row.data;
+    normalizeDB();
+    cloudVersion=Number(row.version)||1;
+    cloudUpdatedAt=row.updated_at||"";
+    cloudReady=true;
+    cloudConflict=false;
+    $("#dbName").value=db.databaseName||"Mediola STATIM database";
+    await localSave(); // offline cache / emergency fallback
+    render();
+    setCloudState(`Shared · v${cloudVersion}`);
+  }finally{
+    suppressCloudSave=false;
+  }
+  return true;
+}
+async function loadCloudDatabase(){
+  setCloudState("Loading shared database…","saving");
+  const row=await fetchCloudRow();
+  if(!cloudPayloadLooksInitialized(row.data)){
+    cloudVersion=Number(row.version)||1;
+    cloudUpdatedAt=row.updated_at||"";
+    cloudReady=false;
+    showAuthPanel("cloudSetup");
+    return false;
+  }
+  return await applyCloudRow(row);
+}
+function queueCloudSave(){
+  if(!cloudReady || cloudConflict)return;
+  cloudSaveQueued=true;
+  setCloudState("Saving…","saving");
+  clearTimeout(cloudSaveTimer);
+  cloudSaveTimer=setTimeout(()=>flushCloudSave(),650);
+}
+async function flushCloudSave(){
+  if(!cloudReady || cloudConflict)return;
+  if(cloudSaveInFlight){cloudSaveQueued=true;return}
+  cloudSaveInFlight=true;
+  cloudSaveQueued=false;
+
+  try{
+    db.databaseName=$("#dbName").value||db.databaseName;
+    db.exportedAt=new Date().toISOString();
+
+    const expected=cloudVersion;
+    const nextVersion=expected+1;
+    const update={
+      data:db,
+      version:nextVersion,
+      updated_at:new Date().toISOString(),
+      updated_by:authSession?.user?.id||null
+    };
+
+    const {data,error}=await sb
+      .from("app_state")
+      .update(update)
+      .eq("id","main")
+      .eq("version",expected)
+      .select("version,updated_at");
+
+    if(error)throw error;
+
+    if(!data || data.length===0){
+      cloudConflict=true;
+      setCloudState("Cloud changed on another PC","error");
+      const reload=confirm(
+        "Another signed-in PC saved a newer version of the STATIM database before this save completed.\\n\\n" +
+        "Press OK to reload the newer shared version. Press Cancel to keep your unsaved browser copy so you can export it as JSON first."
+      );
+      if(reload){
+        const row=await fetchCloudRow();
+        await applyCloudRow(row);
+        toast("Reloaded newer shared database");
+      }
+      return;
+    }
+
+    cloudVersion=Number(data[0].version)||nextVersion;
+    cloudUpdatedAt=data[0].updated_at||"";
+    setCloudState(`Shared · saved v${cloudVersion}`);
+    await localSave();
+  }catch(e){
+    console.error(e);
+    setCloudState("Cloud save failed","error");
+    toast("Cloud save failed: "+(e.message||String(e)));
+  }finally{
+    cloudSaveInFlight=false;
+    if(cloudSaveQueued && !cloudConflict)queueCloudSave();
+  }
+}
+async function initializeCloudFromObject(obj){
+  if(!obj || !Array.isArray(obj.units))throw new Error("Not a Mediola STATIM database.");
+  suppressCloudSave=true;
+  try{
+    db=obj;
+    normalizeDB();
+    db.version=APP_VERSION;
+    db.exportedAt=new Date().toISOString();
+
+    const expected=cloudVersion||1;
+    const {data,error}=await sb
+      .from("app_state")
+      .update({
+        data:db,
+        version:expected+1,
+        updated_at:new Date().toISOString(),
+        updated_by:authSession?.user?.id||null
+      })
+      .eq("id","main")
+      .eq("version",expected)
+      .select("version,updated_at");
+
+    if(error)throw error;
+    if(!data || data.length===0)
+      throw new Error("The shared database changed during setup. Reload the page and try again.");
+
+    cloudVersion=Number(data[0].version)||expected+1;
+    cloudUpdatedAt=data[0].updated_at||"";
+    cloudReady=true;
+    cloudConflict=false;
+    $("#dbName").value=db.databaseName||"Mediola STATIM database";
+    await localSave();
+    render();
+    setCloudState(`Shared · saved v${cloudVersion}`);
+    hideAuthGate();
+  }finally{
+    suppressCloudSave=false;
+  }
+}
 async function startApplication(){
   if(appStarted)return;
   appStarted=true;
-  const saved=await localLoad();
-  if(saved){db=saved}else db=blankDB();
-  normalizeDB();
-  $("#dbName").value=db.databaseName||"Mediola STATIM database";
+
   $("#langSelect").value=currentLang;
-  applyLanguage();
+  try{
+    const loaded=await loadCloudDatabase();
+    if(!loaded)return;
+    applyLanguage();
+  }catch(e){
+    console.error(e);
+    appStarted=false;
+    setCloudState("Cloud connection failed","error");
+    showAuthPanel("login");
+    showAuthError("loginError","Could not load the shared database: "+(e.message||String(e)));
+  }
 }
 async function enterAuthenticatedApp(session){
   authSession=session;
   $("#userStrip").style.display="flex";
   $("#userEmail").textContent=session?.user?.email||"";
   await startApplication();
-  hideAuthGate();
+  if(cloudReady)hideAuthGate();
 }
 async function handleAuthSession(session,forceInviteMode=false){
   authSession=session||null;
@@ -2289,6 +2483,31 @@ async function initSupabaseAuth(){
   });
 }
 
+$("#cloudSetupImportBtn").onclick=()=>{
+  showAuthError("cloudSetupError","");
+  $("#cloudSetupFile").click();
+};
+$("#cloudSetupFile").onchange=async()=>{
+  const f=$("#cloudSetupFile").files?.[0];
+  if(!f)return;
+  $("#cloudSetupImportBtn").disabled=true;
+  $("#cloudSetupImportBtn").textContent="Initializing…";
+  try{
+    const obj=JSON.parse(await f.text());
+    if(!Array.isArray(obj?.units))throw new Error("That JSON does not contain a Mediola units database.");
+    if(!confirm(`Initialize the shared Supabase database with "${obj.databaseName||f.name}" containing ${obj.units.length} unit(s)?`))return;
+    await initializeCloudFromObject(obj);
+    applyLanguage();
+    toast("Shared database initialized");
+  }catch(e){
+    showAuthError("cloudSetupError",e.message||String(e));
+  }finally{
+    $("#cloudSetupImportBtn").disabled=false;
+    $("#cloudSetupImportBtn").textContent="Choose JSON and initialize cloud";
+    $("#cloudSetupFile").value="";
+  }
+};
+
 $("#loginBtn").onclick=async()=>{
   showAuthError("loginError","");
   const email=$("#authEmail").value.trim(),password=$("#authPassword").value;
@@ -2324,7 +2543,12 @@ $("#signOutBtn").onclick=async()=>{
   if(!sb)return;
   await sb.auth.signOut();
   authSession=null;
+  cloudReady=false;
+  cloudConflict=false;
+  cloudVersion=null;
+  appStarted=false;
   $("#userStrip").style.display="none";
+  setCloudState("Signed out");
   showAuthPanel("login");
 };
 
