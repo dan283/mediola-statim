@@ -208,15 +208,74 @@
     .layout{display:block}.stats{grid-template-columns:repeat(5,1fr)}
     main{padding:0}.card{break-inside:avoid;box-shadow:none}
   }
+
+  /* Supabase authentication */
+  .auth-gate{
+    position:fixed;inset:0;z-index:10000;background:linear-gradient(135deg,#edf6f7,#f8fbfc);
+    display:flex;align-items:center;justify-content:center;padding:24px
+  }
+  .auth-gate.hidden{display:none}
+  .auth-card{
+    width:min(430px,100%);background:white;border:1px solid #cbdfe2;border-radius:18px;
+    box-shadow:0 18px 55px rgba(21,57,62,.16);padding:24px
+  }
+  .auth-card h1{font-size:24px;margin:0 0 4px}
+  .auth-card .auth-sub{color:#65747b;font-size:13px;margin-bottom:20px}
+  .auth-card .field{margin-bottom:12px}
+  .auth-card .btn{width:100%;justify-content:center;margin-top:5px}
+  .auth-error{display:none;background:#fff1f1;border:1px solid #e6bcbc;color:#8e2f2f;border-radius:10px;padding:10px 12px;font-size:13px;margin:10px 0}
+  .auth-error.show{display:block}
+  .auth-info{background:#eef7f8;border:1px solid #c9dfe2;border-radius:10px;padding:10px 12px;font-size:13px;margin:10px 0;color:#3d555d}
+  .auth-switch{font-size:12px;color:#66747a;margin-top:14px;text-align:center}
+  .user-strip{display:flex;align-items:center;gap:8px}
+  .user-email{font-size:12px;color:#52656c;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .cloud-state{font-size:11px;padding:4px 8px;border-radius:999px;background:#edf3f4;color:#53676e;border:1px solid #d2dfe1}
+  @media(max-width:720px){.user-email{display:none}.cloud-state{display:none}}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
+<div class="auth-gate" id="authGate">
+  <div class="auth-card">
+    <div style="font-weight:900;font-size:12px;letter-spacing:.08em;color:#4d777d;margin-bottom:6px">MEDIOLA</div>
+
+    <div id="loginPanel" style="display:none">
+      <h1>STATIM Service Manager</h1>
+      <div class="auth-sub">Sign in with your Mediola account.</div>
+      <div class="field"><label>Email</label><input id="authEmail" type="email" autocomplete="username" placeholder="name@company.com" /></div>
+      <div class="field"><label>Password</label><input id="authPassword" type="password" autocomplete="current-password" /></div>
+      <div class="auth-error" id="loginError"></div>
+      <button class="btn primary" id="loginBtn" type="button">Sign in</button>
+      <div class="auth-switch">Accounts are created by invitation. There is no public sign-up.</div>
+    </div>
+
+    <div id="passwordPanel" style="display:none">
+      <h1>Set your password</h1>
+      <div class="auth-sub">Your invitation was accepted. Choose the password you will use to sign in.</div>
+      <div class="field"><label>New password</label><input id="newPassword" type="password" autocomplete="new-password" minlength="8" /></div>
+      <div class="field"><label>Repeat password</label><input id="newPassword2" type="password" autocomplete="new-password" minlength="8" /></div>
+      <div class="auth-error" id="passwordError"></div>
+      <button class="btn primary" id="setPasswordBtn" type="button">Set password and continue</button>
+    </div>
+
+    <div id="authLoading">
+      <h1>STATIM Service Manager</h1>
+      <div class="auth-info">Checking your Mediola login…</div>
+    </div>
+  </div>
+</div>
+
 <header class="topbar">
   <div class="brand">
     <div class="logo">M</div>
     <div><h1>Mediola STATIM Service Manager</h1><small>6 / 12 month inspection & repair tracking</small></div>
   </div>
   <div class="top-actions">
+    <div class="user-strip" id="userStrip" style="display:none">
+      <span class="cloud-state" id="cloudState">Authenticated · local data for now</span>
+      <span class="user-email" id="userEmail"></span>
+      <button class="btn small" id="signOutBtn" type="button">Sign out</button>
+    </div>
     <select id="langSelect" class="btn" style="width:auto;padding-right:28px">
       <option value="en">English</option>
       <option value="hu">Magyar</option>
@@ -276,8 +335,7 @@
   <div class="section-title">Database</div>
   <div class="filter"><label>Database name</label><input id="dbName" value="Mediola STATIM database" /></div>
   <div class="side-note">
-    Records autosave locally in this browser. Use <b>Save JSON</b> to create a portable backup/database file and <b>Open JSON</b> on another machine.
-    Photos are compressed and embedded inside the JSON.
+    Login is now handled by Supabase. In this test version, records still autosave locally in this browser. Shared Supabase saving comes in the next step after login is verified. JSON backup/restore remains available.
   </div>
 </aside>
 
@@ -653,7 +711,14 @@
 
 <script>
 "use strict";
-const APP_VERSION = 6;
+const SUPABASE_URL = 'https://uasusnavzyhfaicxooat.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_r5an9y5b9wGwks4wbmLPHw_jYRDaa6E';
+const INVITE_LINK_MODE = /(?:[?#&])type=(?:invite|recovery)(?:[&#]|$)/i.test(location.href);
+let sb = null;
+let authSession = null;
+let appStarted = false;
+
+const APP_VERSION = 7;
 const blankDB = () => ({
   app:"Mediola STATIM Service Manager",
   version:APP_VERSION,
@@ -2145,15 +2210,125 @@ function normalizeDB(){
 }
 $("#addUnitBtn").onclick=newUnit;
 
-/* Startup */
-(async()=>{
+/* Auth + startup */
+function showAuthError(id,msg){
+  const el=$("#"+id); if(!el)return;
+  el.textContent=msg||"";
+  el.classList.toggle("show",!!msg);
+}
+function showAuthPanel(name){
+  $("#loginPanel").style.display=name==="login"?"":"none";
+  $("#passwordPanel").style.display=name==="password"?"":"none";
+  $("#authLoading").style.display=name==="loading"?"":"none";
+  $("#authGate").classList.remove("hidden");
+}
+function hideAuthGate(){$("#authGate").classList.add("hidden")}
+
+async function startApplication(){
+  if(appStarted)return;
+  appStarted=true;
   const saved=await localLoad();
   if(saved){db=saved}else db=blankDB();
   normalizeDB();
   $("#dbName").value=db.databaseName||"Mediola STATIM database";
   $("#langSelect").value=currentLang;
   applyLanguage();
-})();
+}
+async function enterAuthenticatedApp(session){
+  authSession=session;
+  $("#userStrip").style.display="flex";
+  $("#userEmail").textContent=session?.user?.email||"";
+  await startApplication();
+  hideAuthGate();
+}
+async function handleAuthSession(session,forceInviteMode=false){
+  authSession=session||null;
+  if(!session){
+    $("#userStrip").style.display="none";
+    showAuthPanel("login");
+    return;
+  }
+  if(forceInviteMode){
+    showAuthPanel("password");
+    return;
+  }
+  await enterAuthenticatedApp(session);
+}
+
+async function initSupabaseAuth(){
+  if(!window.supabase?.createClient){
+    showAuthPanel("login");
+    showAuthError("loginError","Could not load the Supabase client library. Check your internet connection and reload.");
+    return;
+  }
+  sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,{
+    auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}
+  });
+
+  showAuthPanel("loading");
+  const {data,error}=await sb.auth.getSession();
+  if(error){
+    showAuthPanel("login");
+    showAuthError("loginError",error.message);
+    return;
+  }
+  await handleAuthSession(data.session,INVITE_LINK_MODE);
+
+  sb.auth.onAuthStateChange(async(event,session)=>{
+    authSession=session||null;
+    if(event==="SIGNED_OUT"){
+      $("#userStrip").style.display="none";
+      showAuthPanel("login");
+      return;
+    }
+    if((event==="SIGNED_IN"||event==="PASSWORD_RECOVERY") && INVITE_LINK_MODE){
+      showAuthPanel("password");
+      return;
+    }
+    if(session && !INVITE_LINK_MODE) await enterAuthenticatedApp(session);
+  });
+}
+
+$("#loginBtn").onclick=async()=>{
+  showAuthError("loginError","");
+  const email=$("#authEmail").value.trim(),password=$("#authPassword").value;
+  if(!email||!password){showAuthError("loginError","Enter your email and password.");return}
+  $("#loginBtn").disabled=true;$("#loginBtn").textContent="Signing in…";
+  try{
+    const {data,error}=await sb.auth.signInWithPassword({email,password});
+    if(error)throw error;
+    await enterAuthenticatedApp(data.session);
+  }catch(e){showAuthError("loginError",e.message||String(e))}
+  finally{$("#loginBtn").disabled=false;$("#loginBtn").textContent="Sign in"}
+};
+$("#authPassword").addEventListener("keydown",e=>{if(e.key==="Enter")$("#loginBtn").click()});
+
+$("#setPasswordBtn").onclick=async()=>{
+  showAuthError("passwordError","");
+  const p1=$("#newPassword").value,p2=$("#newPassword2").value;
+  if(p1.length<8){showAuthError("passwordError","Use at least 8 characters.");return}
+  if(p1!==p2){showAuthError("passwordError","The two passwords do not match.");return}
+  $("#setPasswordBtn").disabled=true;$("#setPasswordBtn").textContent="Saving…";
+  try{
+    const {error}=await sb.auth.updateUser({password:p1});
+    if(error)throw error;
+    history.replaceState({},document.title,location.pathname);
+    const {data}=await sb.auth.getSession();
+    await enterAuthenticatedApp(data.session);
+    toast("Password saved");
+  }catch(e){showAuthError("passwordError",e.message||String(e))}
+  finally{$("#setPasswordBtn").disabled=false;$("#setPasswordBtn").textContent="Set password and continue"}
+};
+
+$("#signOutBtn").onclick=async()=>{
+  if(!sb)return;
+  await sb.auth.signOut();
+  authSession=null;
+  $("#userStrip").style.display="none";
+  showAuthPanel("login");
+};
+
+initSupabaseAuth();
 </script>
 </body>
 </html>
