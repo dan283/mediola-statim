@@ -180,7 +180,7 @@
   .repair-parts-table th{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
   .repair-parts-table input{padding:6px 7px;border-radius:8px}
   .cost-summary{
-    grid-column:span 2;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;
+    grid-column:span 2;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px;
     padding:12px;border:1px solid #cfe0e3;border-radius:13px;background:#f3f8f9
   }
   .cost-box{background:#fff;border:1px solid #dbe5e8;border-radius:10px;padding:9px}
@@ -590,6 +590,19 @@
 
       <div class="field span2"><label id="additionalPartsLabel">Additional parts / notes</label><textarea id="rParts" placeholder="Non-catalogue parts, serials, notes..."></textarea></div>
 
+      <div class="field span2">
+        <label id="repairServicesLabel">Service / labour charges</label>
+        <div class="grid3">
+          <div class="field span2"><select id="rServiceSelect"><option value="">Choose a service...</option></select></div>
+          <div style="display:flex;gap:7px;align-items:end">
+            <div class="field" style="flex:1"><label id="serviceQtyLabel">Qty</label><input id="rServiceQty" type="number" min="0.01" step="0.25" value="1" /></div>
+            <button class="btn brand" id="addRepairServiceBtn" type="button" style="height:40px">+ Add</button>
+          </div>
+        </div>
+        <div id="repairServicesTableWrap"></div>
+        <div class="sub" id="serviceChargeHelp" style="margin-top:6px">Examples: call-out charge, inspection, diagnostics, kilometre charge, commissioning.</div>
+      </div>
+
       <div class="section-title span2" id="repairCostTitle">Cost calculation</div>
       <div class="field"><label id="laborHoursLabel">Labour hours</label><input id="rLaborHours" type="number" min="0" step="0.25" value="0" /></div>
       <div class="field"><label id="hourlyRateLabel">Hourly labour rate</label><input id="rHourlyRate" type="number" min="0" step="1" /></div>
@@ -598,7 +611,8 @@
 
       <div class="cost-summary">
         <div class="cost-box"><div class="k" id="partsSubtotalLabel">Parts</div><div class="v" id="rPartsSubtotal">0 Ft</div></div>
-        <div class="cost-box"><div class="k" id="laborSubtotalLabel">Labour</div><div class="v" id="rLaborSubtotal">0 Ft</div></div>
+        <div class="cost-box"><div class="k" id="laborSubtotalLabel">Hourly labour</div><div class="v" id="rLaborSubtotal">0 Ft</div></div>
+        <div class="cost-box"><div class="k" id="serviceSubtotalLabel">Services</div><div class="v" id="rServiceSubtotal">0 Ft</div></div>
         <div class="cost-box"><div class="k" id="otherSubtotalLabel">Other</div><div class="v" id="rOtherSubtotal">0 Ft</div></div>
         <div class="cost-box"><div class="k" id="totalSubtotalLabel">Total</div><div class="v" id="rTotalDisplay">0 Ft</div></div>
       </div>
@@ -618,6 +632,31 @@
         <div class="field"><label id="defaultRateLabel">Default hourly labour rate</label><input id="catalogHourlyRate" type="number" min="0" step="1" placeholder="HUF / hour" /></div>
         <div class="field span2"><label id="rateNoteLabel">How it works</label><div class="notice" id="rateHelp" style="margin:0">New repairs use this rate automatically. Each repair keeps its own saved rate, so historical totals do not change later.</div></div>
       </div>
+      <div class="section-title" id="serviceCatalogTitle">Service / labour catalogue</div>
+      <div class="grid3">
+        <div class="field"><label id="serviceNameLabel">Charge name *</label><input id="catalogServiceName" placeholder="e.g. Call-out charge" /></div>
+        <div class="field"><label id="serviceCodeLabel">Code</label><input id="catalogServiceCode" placeholder="Optional" /></div>
+        <div class="field"><label id="serviceCostLabel">Default price</label><input id="catalogServiceCost" type="number" min="0" step="1" placeholder="HUF" /></div>
+        <div class="field"><label id="serviceUnitLabel">Unit / basis</label><input id="catalogServiceUnit" list="serviceUnitOptions" placeholder="e.g. per visit" /></div>
+        <div class="field span2"><label id="serviceNotesLabel">Notes</label><input id="catalogServiceNotes" placeholder="Optional" /></div>
+        <label class="checkrow span3"><input id="catalogServiceActive" type="checkbox" checked /><span><b id="serviceActiveLabel">Active / available</b><span class="sub" id="serviceActiveHelp"> Inactive items remain in historical jobs but are hidden from new selection.</span></span></label>
+      </div>
+      <datalist id="serviceUnitOptions">
+        <option value="per job"></option>
+        <option value="per visit"></option>
+        <option value="per unit"></option>
+        <option value="per inspection"></option>
+        <option value="per hour"></option>
+        <option value="per km"></option>
+        <option value="per shipment"></option>
+      </datalist>
+      <div class="pillrow">
+        <button class="btn brand" id="saveCatalogServiceBtn">+ Add charge</button>
+        <button class="btn ghost" id="cancelCatalogServiceEditBtn" style="display:none">Cancel edit</button>
+      </div>
+      <div class="section-title" id="savedServicesTitle">Saved service / labour charges</div>
+      <div class="catalog-list" id="serviceCatalogList"></div>
+
       <div class="section-title" id="partCatalogTitle">Part catalogue</div>
       <div class="grid3">
         <div class="field"><label id="partNameLabel">Part name *</label><input id="catalogPartName" placeholder="e.g. Cassette seal" /></div>
@@ -635,7 +674,7 @@
       <div class="catalog-list" id="catalogList"></div>
     </div>
     <div class="footer-actions">
-      <span class="sub" id="catalogFooterNote" style="margin-right:auto">Prices and labour rate are stored in the same portable JSON database.</span>
+      <span class="sub" id="catalogFooterNote" style="margin-right:auto">Parts, service charges and labour rates are stored in the same database.</span>
       <button class="btn brand" data-close="partsModal" id="partsDoneBtn">Done</button>
     </div>
   </div>
@@ -743,7 +782,7 @@ let cloudSaveQueued = false;
 let cloudConflict = false;
 let suppressCloudSave = false;
 
-const APP_VERSION = 9;
+const APP_VERSION = 11;
 const blankDB = () => ({
   app:"Mediola STATIM Service Manager",
   version:APP_VERSION,
@@ -769,6 +808,16 @@ const blankDB = () => ({
     ]}
   ],
   partsCatalog:[],
+  serviceCatalog:[
+    {id:"service_callout",name:"Kiszállási költség",code:"KISZALLAS",cost:0,unit:"per visit",notes:"",active:true},
+    {id:"service_inspection",name:"Felülvizsgálat",code:"FELULVIZSGALAT",cost:0,unit:"per inspection",notes:"",active:true},
+    {id:"service_diagnostics",name:"Bevizsgálás / diagnosztika",code:"DIAGNOSZTIKA",cost:0,unit:"per job",notes:"",active:true},
+    {id:"service_fixed_labour",name:"Munkadíj (fix)",code:"MUNKADIJ-FIX",cost:0,unit:"per job",notes:"",active:true},
+    {id:"service_km",name:"Kilométerdíj",code:"KM",cost:0,unit:"per km",notes:"",active:true},
+    {id:"service_commissioning",name:"Beüzemelés",code:"BEUZEMELES",cost:0,unit:"per unit",notes:"",active:true},
+    {id:"service_shipping",name:"Szállítás / futár",code:"SZALLITAS",cost:0,unit:"per shipment",notes:"",active:true},
+    {id:"service_urgent",name:"Sürgősségi felár",code:"SURGOS",cost:0,unit:"per job",notes:"",active:true}
+  ],
   locations:[],
   units:[]
 });
@@ -779,7 +828,9 @@ let editingHospitalId = null;
 let editingWardHospitalId = null;
 let editingWardId = null;
 let editingCatalogPartId = null;
+let editingCatalogServiceId = null;
 let repairPartsDraft = [];
+let repairServicesDraft = [];
 let fileHandle = null;
 
 const $ = s => document.querySelector(s);
@@ -831,15 +882,19 @@ const I18N = {
     eventType:"Event type", eventRepair:"Repair", eventMaintenance:"Maintenance", eventSoftware:"Software update", eventCleaning:"Cleaning", eventInspection:"Inspection-related", eventOther:"Other",
     status:"Status", completedDate:"Completed date", repairNo:"Job sheet / repair no.", cost:"Total cost", faultNotes:"Fault / repair notes",
     partsUsed:"Parts used", additionalParts:"Additional parts / notes", choosePart:"Choose a part...", qty:"Qty", add:"+ Add",
+    serviceCharges:"Service / labour charges", chooseService:"Choose a service...", serviceChargeHelp:"Examples: call-out charge, inspection, diagnostics, kilometre charge, commissioning.",
     manageParts:"Manage parts & labour", costCalculation:"Cost calculation", laborHours:"Labour hours", hourlyRate:"Hourly labour rate",
-    otherCost:"Other cost / adjustment", costNote:"Cost note", partsSubtotal:"Parts", laborSubtotal:"Labour", otherSubtotal:"Other", total:"Total",
-    saveRepair:"Save repair", partsModalTitle:"Parts & labour", partsModalSub:"Maintain reusable part prices and the default hourly labour rate.",
+    otherCost:"Other cost / adjustment", costNote:"Cost note", partsSubtotal:"Parts", laborSubtotal:"Hourly labour", serviceSubtotal:"Services", otherSubtotal:"Other", total:"Total",
+    saveRepair:"Save repair", partsModalTitle:"Parts & labour", partsModalSub:"Maintain reusable parts, service charges and labour pricing.",
     defaultHourlyRate:"Default hourly labour rate", rateHow:"How it works", rateHelp:"New repairs use this rate automatically. Each repair keeps its own saved rate, so historical totals do not change later.",
+    serviceCatalog:"Service / labour catalogue", serviceName:"Charge name *", serviceCode:"Code", serviceDefaultPrice:"Default price", serviceUnit:"Unit / basis", serviceNotes:"Notes",
+    serviceActive:"Active / available", serviceActiveHelp:"Inactive items remain in historical jobs but are hidden from new selection.",
+    addService:"+ Add charge", saveService:"Save charge", savedServices:"Saved service / labour charges", noSavedServices:"No service charges saved yet.",
     partCatalog:"Part catalogue", partName:"Part name *", partNumber:"Part number", unitCost:"Unit cost", partSupplier:"Supplier", partNotes:"Notes",
     partActive:"Active / available", partActiveHelp:"Inactive parts remain in historical repairs but are hidden from new repair selection.",
     inactive:"Inactive", addPart:"+ Add part", savePart:"Save part", cancelEdit:"Cancel edit", savedParts:"Saved parts", noSavedParts:"No parts saved yet.",
-    catalogFooter:"Prices and labour rate are stored in the same portable JSON database.", part:"Part", unitPrice:"Unit price", lineTotal:"Total", remove:"Remove",
-    partsSummary:"Parts", labourSummary:"Labour", hoursShort:"h", hospitalsTitle:"Hospitals & wards", hospitalsSub:"Maintain the master list used by unit sheets and dashboard filters.",
+    catalogFooter:"Parts, service charges and labour rates are stored in the same database.", part:"Part", unitPrice:"Unit price", lineTotal:"Total", remove:"Remove",
+    partsSummary:"Parts", serviceSummary:"Services", labourSummary:"Hourly labour", hoursShort:"h", hospitalsTitle:"Hospitals & wards", hospitalsSub:"Maintain the master list used by unit sheets and dashboard filters.",
     hospitalName:"Hospital name *", cityAddress:"City / address", hospitalCode:"Hospital code / short name", generalContact:"General contact",
     customerAccount:"Customer / account no.", notes:"Notes", addHospital:"+ Add hospital",
     hospitalDirectory:"Hospital directory", done:"Done", sameJson:"Hospitals and wards are stored in the same JSON database as the units.",
@@ -899,15 +954,19 @@ const I18N = {
     eventType:"Esemény típusa", eventRepair:"Javítás", eventMaintenance:"Karbantartás", eventSoftware:"Szoftverfrissítés", eventCleaning:"Tisztítás", eventInspection:"Felülvizsgálathoz kapcsolódó", eventOther:"Egyéb",
     status:"Állapot", completedDate:"Befejezés dátuma", repairNo:"Munkalap / javítás száma", cost:"Teljes költség", faultNotes:"Hiba / javítás megjegyzései",
     partsUsed:"Felhasznált alkatrészek", additionalParts:"További alkatrészek / megjegyzések", choosePart:"Válassz alkatrészt...", qty:"Db", add:"+ Hozzáadás",
+    serviceCharges:"Szolgáltatások / munkadíj tételek", chooseService:"Válassz szolgáltatást...", serviceChargeHelp:"Példák: kiszállási költség, felülvizsgálat, diagnosztika, kilométerdíj, beüzemelés.",
     manageParts:"Alkatrészek és munkadíj kezelése", costCalculation:"Költségszámítás", laborHours:"Munkaórák", hourlyRate:"Óradíj",
-    otherCost:"Egyéb költség / korrekció", costNote:"Költség megjegyzés", partsSubtotal:"Alkatrészek", laborSubtotal:"Munkadíj", otherSubtotal:"Egyéb", total:"Összesen",
-    saveRepair:"Javítás mentése", partsModalTitle:"Alkatrészek és munkadíj", partsModalSub:"Újra felhasználható alkatrészárak és az alapértelmezett óradíj kezelése.",
+    otherCost:"Egyéb költség / korrekció", costNote:"Költség megjegyzés", partsSubtotal:"Alkatrészek", laborSubtotal:"Óradíjas munkadíj", serviceSubtotal:"Szolgáltatások", otherSubtotal:"Egyéb", total:"Összesen",
+    saveRepair:"Javítás mentése", partsModalTitle:"Alkatrészek és munkadíj", partsModalSub:"Alkatrészek, szolgáltatási tételek és munkadíjak kezelése.",
     defaultHourlyRate:"Alapértelmezett óradíj", rateHow:"Működés", rateHelp:"Az új javítások automatikusan ezt az óradíjat használják. Minden javítás a saját mentett óradíját őrzi, ezért a korábbi összegek később nem változnak.",
+    serviceCatalog:"Szolgáltatás- / munkadíjlista", serviceName:"Tétel neve *", serviceCode:"Kód", serviceDefaultPrice:"Alapár", serviceUnit:"Egység / elszámolás", serviceNotes:"Megjegyzések",
+    serviceActive:"Aktív / használható", serviceActiveHelp:"Az inaktív tételek megmaradnak a korábbi munkalapokon, de új munkánál nem jelennek meg.",
+    addService:"+ Tétel hozzáadása", saveService:"Tétel mentése", savedServices:"Mentett szolgáltatás- / munkadíjtételek", noSavedServices:"Még nincs mentett szolgáltatási tétel.",
     partCatalog:"Alkatrészlista", partName:"Alkatrész neve *", partNumber:"Cikkszám", unitCost:"Egységár", partSupplier:"Beszállító", partNotes:"Megjegyzések",
     partActive:"Aktív / rendelhető", partActiveHelp:"Az inaktív alkatrészek megmaradnak a korábbi javításokban, de új javításnál nem jelennek meg.",
     inactive:"Inaktív", addPart:"+ Alkatrész hozzáadása", savePart:"Alkatrész mentése", cancelEdit:"Szerkesztés megszakítása", savedParts:"Mentett alkatrészek", noSavedParts:"Még nincs mentett alkatrész.",
-    catalogFooter:"Az alkatrészárak és az óradíj ugyanabban a hordozható JSON adatbázisban tárolódnak.", part:"Alkatrész", unitPrice:"Egységár", lineTotal:"Összeg", remove:"Törlés",
-    partsSummary:"Alkatrész", labourSummary:"Munkadíj", hoursShort:"óra", hospitalsTitle:"Kórházak és osztályok", hospitalsSub:"A berendezéslapok és a műszerfal szűrői által használt központi lista kezelése.",
+    catalogFooter:"Az alkatrészek, szolgáltatási tételek és munkadíjak ugyanabban az adatbázisban tárolódnak.", part:"Alkatrész", unitPrice:"Egységár", lineTotal:"Összeg", remove:"Törlés",
+    partsSummary:"Alkatrész", serviceSummary:"Szolgáltatások", labourSummary:"Óradíjas munkadíj", hoursShort:"óra", hospitalsTitle:"Kórházak és osztályok", hospitalsSub:"A berendezéslapok és a műszerfal szűrői által használt központi lista kezelése.",
     hospitalName:"Kórház neve *", cityAddress:"Város / cím", hospitalCode:"Kórházi kód / rövid név", generalContact:"Általános kapcsolattartó",
     customerAccount:"Ügyfél- / partnerazonosító", notes:"Megjegyzések", addHospital:"+ Kórház hozzáadása",
     hospitalDirectory:"Kórházlista", done:"Kész", sameJson:"A kórházak és osztályok ugyanabban a JSON adatbázisban tárolódnak, mint a berendezések.",
@@ -1272,6 +1331,10 @@ function applyLanguage(){
   $("#repairPartsLabel").textContent=L("partsUsed");
   $("#qtyLabel").textContent=L("qty");
   $("#addRepairPartBtn").textContent=L("add");
+  $("#repairServicesLabel").textContent=L("serviceCharges");
+  $("#serviceQtyLabel").textContent=L("qty");
+  $("#addRepairServiceBtn").textContent=L("add");
+  $("#serviceChargeHelp").textContent=L("serviceChargeHelp");
   $("#openPartsFromRepairBtn").textContent=L("manageParts");
   $("#additionalPartsLabel").textContent=L("additionalParts");
   $("#repairCostTitle").textContent=L("costCalculation");
@@ -1281,6 +1344,7 @@ function applyLanguage(){
   $("#costNoteLabel").textContent=L("costNote");
   $("#partsSubtotalLabel").textContent=L("partsSubtotal");
   $("#laborSubtotalLabel").textContent=L("laborSubtotal");
+  $("#serviceSubtotalLabel").textContent=L("serviceSubtotal");
   $("#otherSubtotalLabel").textContent=L("otherSubtotal");
   $("#totalSubtotalLabel").textContent=L("total");
   $("#saveRepairBtn").textContent=L("saveRepair");
@@ -1291,6 +1355,17 @@ function applyLanguage(){
   $("#defaultRateLabel").textContent=L("defaultHourlyRate");
   $("#rateNoteLabel").textContent=L("rateHow");
   $("#rateHelp").textContent=L("rateHelp");
+  $("#serviceCatalogTitle").textContent=L("serviceCatalog");
+  $("#serviceNameLabel").textContent=L("serviceName");
+  $("#serviceCodeLabel").textContent=L("serviceCode");
+  $("#serviceCostLabel").textContent=L("serviceDefaultPrice");
+  $("#serviceUnitLabel").textContent=L("serviceUnit");
+  $("#serviceNotesLabel").textContent=L("serviceNotes");
+  $("#serviceActiveLabel").textContent=L("serviceActive");
+  $("#serviceActiveHelp").textContent=" "+L("serviceActiveHelp");
+  $("#saveCatalogServiceBtn").textContent=editingCatalogServiceId?L("saveService"):L("addService");
+  $("#cancelCatalogServiceEditBtn").textContent=L("cancelEdit");
+  $("#savedServicesTitle").textContent=L("savedServices");
   $("#partCatalogTitle").textContent=L("partCatalog");
   $("#partNameLabel").textContent=L("partName");
   $("#partNumberLabel").textContent=L("partNumber");
@@ -1665,7 +1740,7 @@ function createMaintenanceHistoryFromCheck(u,c){
     id:uid("repair"),sourceCheckId:c.id,eventType:"Maintenance",date:c.date,status:"Completed",technician:c.technician,
     completedDate:c.date,jobNo:c.jobNo,cost:partsTotal,
     notes:`${c.serviceKit} — ${currentLang==="hu"?"ütemezett karbantartás":"scheduled maintenance"}`,
-    parts:partsText,partsUsed:parts,laborHours:0,hourlyRate:Number(db.settings?.hourlyRate)||0,otherCost:0,
+    parts:partsText,partsUsed:parts,servicesUsed:[],laborHours:0,hourlyRate:Number(db.settings?.hourlyRate)||0,otherCost:0,
     costNote:partsTotal? "":(currentLang==="hu"?"Az alkatrészárak még nincsenek kitöltve a katalógusban.":"Part prices are not yet filled in the catalogue."),
     updatedAt:new Date().toISOString()
   });
@@ -1728,6 +1803,48 @@ function populateRepairPartSelect(){
   sel.innerHTML=`<option value="">${t("choosePart")}</option>`+parts.map(p=>`<option value="${p.id}">${esc(p.name)}${p.partNo?` · ${esc(p.partNo)}`:""} · ${money(p.cost||0)}</option>`).join("");
   if(parts.some(p=>p.id===selected))sel.value=selected;
 }
+function populateRepairServiceSelect(){
+  const sel=$("#rServiceSelect");
+  if(!sel)return;
+  const selected=sel.value;
+  const items=(db.serviceCatalog||[]).filter(x=>x.active!==false).slice().sort((a,b)=>a.name.localeCompare(b.name));
+  sel.innerHTML=`<option value="">${t("chooseService")}</option>`+items.map(x=>`<option value="${x.id}">${esc(x.name)}${x.unit?` · ${esc(x.unit)}`:""} · ${money(x.cost||0)}</option>`).join("");
+  if(items.some(x=>x.id===selected))sel.value=selected;
+}
+function repairServiceSubtotal(){
+  return repairServicesDraft.reduce((sum,x)=>sum+(Number(x.unitCost)||0)*(Number(x.qty)||0),0);
+}
+function renderRepairServicesDraft(){
+  const wrap=$("#repairServicesTableWrap");if(!wrap)return;
+  if(!repairServicesDraft.length){
+    wrap.innerHTML=`<div class="sub" style="padding:10px 2px">${currentLang==="hu"?"Nincs kiválasztott szolgáltatási / munkadíjtétel.":"No service / labour charges selected."}</div>`;
+    calculateRepairCost();return;
+  }
+  wrap.innerHTML=`<table class="repair-parts-table">
+    <thead><tr><th>${currentLang==="hu"?"Tétel":"Charge"}</th><th>${currentLang==="hu"?"Egység":"Unit"}</th><th>${t("qty")}</th><th>${t("unitPrice")}</th><th>${t("lineTotal")}</th><th></th></tr></thead>
+    <tbody>${repairServicesDraft.map(x=>`<tr>
+      <td><b>${esc(x.name)}</b>${x.code?`<div class="sub">${esc(x.code)}</div>`:""}</td>
+      <td>${esc(x.unit||"—")}</td>
+      <td style="width:90px"><input type="number" min="0.01" step="0.25" value="${Number(x.qty)||1}" onchange="updateRepairServiceQty('${x.id}',this.value)"></td>
+      <td style="width:135px"><input type="number" min="0" step="1" value="${Number(x.unitCost)||0}" onchange="updateRepairServiceCost('${x.id}',this.value)"></td>
+      <td style="white-space:nowrap;font-weight:800">${money((Number(x.unitCost)||0)*(Number(x.qty)||0))}</td>
+      <td><button class="btn small danger" type="button" onclick="removeRepairService('${x.id}')">${t("remove")}</button></td>
+    </tr>`).join("")}</tbody>
+  </table>`;
+  calculateRepairCost();
+}
+function updateRepairServiceQty(id,value){
+  const x=repairServicesDraft.find(y=>y.id===id);if(!x)return;
+  x.qty=Math.max(.01,Number(value)||1);renderRepairServicesDraft();
+}
+function updateRepairServiceCost(id,value){
+  const x=repairServicesDraft.find(y=>y.id===id);if(!x)return;
+  x.unitCost=Math.max(0,Number(value)||0);renderRepairServicesDraft();
+}
+function removeRepairService(id){
+  repairServicesDraft=repairServicesDraft.filter(x=>x.id!==id);
+  renderRepairServicesDraft();
+}
 function repairPartSubtotal(){
   return repairPartsDraft.reduce((sum,p)=>sum+(Number(p.unitCost)||0)*(Number(p.qty)||0),0);
 }
@@ -1736,10 +1853,12 @@ function calculateRepairCost(){
   const hours=Number($("#rLaborHours").value)||0;
   const rate=Number($("#rHourlyRate").value)||0;
   const labour=hours*rate;
+  const services=repairServiceSubtotal();
   const other=Number($("#rOtherCost").value)||0;
-  const total=parts+labour+other;
+  const total=parts+labour+services+other;
   $("#rPartsSubtotal").textContent=money(parts);
   $("#rLaborSubtotal").textContent=money(labour);
+  $("#rServiceSubtotal").textContent=money(services);
   $("#rOtherSubtotal").textContent=money(other);
   $("#rTotalDisplay").textContent=money(total);
   $("#rCost").value=Math.round(total);
@@ -1781,6 +1900,18 @@ $("#addRepairPartBtn").onclick=()=>{
   else repairPartsDraft.push({id:uid("usedpart"),catalogId:src.id,name:src.name,partNo:src.partNo||"",unitCost:Number(src.cost)||0,qty});
   $("#rPartQty").value=1;renderRepairPartsDraft();
 };
+$("#addRepairServiceBtn").onclick=()=>{
+  const id=$("#rServiceSelect").value;if(!id)return;
+  const src=(db.serviceCatalog||[]).find(x=>x.id===id);if(!src)return;
+  const qty=Math.max(.01,Number($("#rServiceQty").value)||1);
+  const existing=repairServicesDraft.find(x=>x.catalogId===src.id);
+  if(existing)existing.qty=(Number(existing.qty)||0)+qty;
+  else repairServicesDraft.push({
+    id:uid("usedservice"),catalogId:src.id,name:src.name,code:src.code||"",
+    unit:src.unit||"",unitCost:Number(src.cost)||0,qty
+  });
+  $("#rServiceQty").value=1;renderRepairServicesDraft();
+};
 ["rLaborHours","rHourlyRate","rOtherCost"].forEach(id=>$("#"+id).addEventListener("input",calculateRepairCost));
 $("#openPartsFromRepairBtn").onclick=()=>openPartsManager();
 
@@ -1792,12 +1923,13 @@ function openRepairModal(repair=null){
   $("#rDone").value=repair?.completedDate||"";$("#rJob").value=repair?.jobNo||"";
   $("#rNotes").value=repair?.notes||"";$("#rParts").value=repair?.parts||"";
   repairPartsDraft=structuredClone(repair?.partsUsed||[]);
-  const hasStructured=!!(repair?.partsUsed?.length || repair?.laborHours || repair?.hourlyRate || repair?.otherCost);
+  repairServicesDraft=structuredClone(repair?.servicesUsed||[]);
+  const hasStructured=!!(repair?.partsUsed?.length || repair?.servicesUsed?.length || repair?.laborHours || repair?.hourlyRate || repair?.otherCost);
   $("#rLaborHours").value=repair?.laborHours??0;
   $("#rHourlyRate").value=repair?.hourlyRate??db.settings?.hourlyRate??0;
   $("#rOtherCost").value=repair?.otherCost??(!hasStructured && repair?.cost ? repair.cost : 0);
   $("#rCostNote").value=repair?.costNote||"";
-  populateRepairPartSelect();renderRepairPartsDraft();calculateRepairCost();
+  populateRepairPartSelect();populateRepairServiceSelect();renderRepairPartsDraft();renderRepairServicesDraft();calculateRepairCost();
   openModal("repairModal");
 }
 $("#rStatus").onchange=()=>{if($("#rStatus").value==="Completed"&&!$("#rDone").value)$("#rDone").value=todayISO()}
@@ -1806,7 +1938,8 @@ $("#saveRepairBtn").onclick=()=>{
   const total=calculateRepairCost();
   const data={id:editingRepairId||uid("repair"),eventType:$("#rEventType").value||"Repair",date:$("#rDate").value||todayISO(),status:$("#rStatus").value,technician:$("#rTech").value.trim(),
     completedDate:$("#rDone").value,jobNo:$("#rJob").value.trim(),cost:Math.round(total),notes:$("#rNotes").value.trim(),parts:$("#rParts").value.trim(),
-    partsUsed:structuredClone(repairPartsDraft),laborHours:Number($("#rLaborHours").value)||0,hourlyRate:Number($("#rHourlyRate").value)||0,
+    partsUsed:structuredClone(repairPartsDraft),servicesUsed:structuredClone(repairServicesDraft),
+    laborHours:Number($("#rLaborHours").value)||0,hourlyRate:Number($("#rHourlyRate").value)||0,
     otherCost:Number($("#rOtherCost").value)||0,costNote:$("#rCostNote").value.trim(),updatedAt:new Date().toISOString()};
   u.repairs=u.repairs||[];const i=u.repairs.findIndex(x=>x.id===editingRepairId);if(i>=0)u.repairs[i]=data;else u.repairs.push(data);
   u.updatedAt=new Date().toISOString();changed();fillUnit(u);switchTab("repairs");closeModal("repairModal");toast(currentLang==="hu"?"Javítás mentve":"Repair saved");
@@ -1830,12 +1963,14 @@ function renderRepairs(u){
   $("#repairHistory").innerHTML=x.length?x.map(r=>{
     const structured=(r.partsUsed||[]);
     const partsSummary=structured.length?structured.map(p=>`${esc(p.name)} × ${Number(p.qty)||1}`).join(", "):"";
+    const serviceSummary=(r.servicesUsed||[]).length?(r.servicesUsed||[]).map(x=>`${esc(x.name)} × ${Number(x.qty)||1}${x.unit?` (${esc(x.unit)})`:""}`).join(", "):"";
     const laborInfo=Number(r.laborHours)>0?`${Number(r.laborHours)} ${t("hoursShort")} × ${money(r.hourlyRate||0)}`:"";
     return `<div class="history-item">
       <div class="history-top"><strong>${fmt(r.date)} · ${esc(repairEventText(r.eventType||"Repair"))}${r.jobNo?` · ${esc(r.jobNo)}`:""}</strong><span class="badge ${["Completed","Cancelled"].includes(r.status)?"ok":"repair"}">${esc(repairStatusText(r.status))}</span></div>
       <div class="sub">${esc(r.technician||t("noTechnician"))}${r.completedDate?` · ${currentLang==="hu"?"befejezve":"completed"} ${fmt(r.completedDate)}`:""}${r.cost!==""&&r.cost!=null?` · <b>${money(r.cost)}</b>`:""}</div>
       ${r.notes?`<div class="history-body"><b>${currentLang==="hu"?"Hiba / munka":"Fault / work"}:</b> ${esc(r.notes)}</div>`:""}
       ${partsSummary?`<div class="history-body"><b>${t("partsSummary")}:</b> ${partsSummary}</div>`:""}
+      ${serviceSummary?`<div class="history-body"><b>${t("serviceSummary")}:</b> ${serviceSummary}</div>`:""}
       ${r.parts?`<div class="history-body"><b>${t("additionalParts")}:</b> ${esc(r.parts)}</div>`:""}
       ${laborInfo?`<div class="history-body"><b>${t("labourSummary")}:</b> ${laborInfo}</div>`:""}
       ${r.costNote?`<div class="history-body"><b>${t("costNote")}:</b> ${esc(r.costNote)}</div>`:""}
@@ -1893,22 +2028,94 @@ function renderUnitSubsections(u){renderChecks(u);renderRepairs(u);renderPhotos(
 /* Parts & labour master catalogue */
 function openPartsManager(){
   editingCatalogPartId=null;
+  editingCatalogServiceId=null;
   $("#catalogHourlyRate").value=db.settings?.hourlyRate??0;
   clearCatalogPartForm();
+  clearCatalogServiceForm();
   renderPartCatalog();
+  renderServiceCatalog();
   openModal("partsModal");
 }
 $("#managePartsBtn").onclick=openPartsManager;
 $("#catalogHourlyRate").addEventListener("change",()=>{
   db.settings=db.settings||{};
   db.settings.hourlyRate=Math.max(0,Number($("#catalogHourlyRate").value)||0);
-  localSave();
+  localSave();if(cloudReady)queueCloudSave();
   if($("#repairModal").classList.contains("open") && !editingRepairId){
     $("#rHourlyRate").value=db.settings.hourlyRate;
     calculateRepairCost();
   }
   toast(currentLang==="hu"?"Óradíj mentve":"Hourly rate saved");
 });
+function clearCatalogServiceForm(){
+  editingCatalogServiceId=null;
+  $("#catalogServiceName").value="";
+  $("#catalogServiceCode").value="";
+  $("#catalogServiceCost").value="";
+  $("#catalogServiceUnit").value="";
+  $("#catalogServiceNotes").value="";
+  $("#catalogServiceActive").checked=true;
+  $("#saveCatalogServiceBtn").textContent=t("addService");
+  $("#cancelCatalogServiceEditBtn").style.display="none";
+}
+$("#cancelCatalogServiceEditBtn").onclick=clearCatalogServiceForm;
+$("#saveCatalogServiceBtn").onclick=()=>{
+  const name=$("#catalogServiceName").value.trim();
+  if(!name){alert(currentLang==="hu"?"A tétel neve kötelező.":"Charge name is required.");return}
+  const code=$("#catalogServiceCode").value.trim();
+  const cost=Math.max(0,Number($("#catalogServiceCost").value)||0);
+  const unit=$("#catalogServiceUnit").value.trim();
+  const notes=$("#catalogServiceNotes").value.trim();
+  const active=$("#catalogServiceActive").checked;
+  db.serviceCatalog=db.serviceCatalog||[];
+  if(editingCatalogServiceId){
+    const x=db.serviceCatalog.find(y=>y.id===editingCatalogServiceId);if(!x)return;
+    x.name=name;x.code=code;x.cost=cost;x.unit=unit;x.notes=notes;x.active=active;x.updatedAt=new Date().toISOString();
+  }else{
+    db.serviceCatalog.push({
+      id:uid("service"),name,code,cost,unit,notes,active,
+      createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()
+    });
+  }
+  localSave();if(cloudReady)queueCloudSave();
+  clearCatalogServiceForm();renderServiceCatalog();populateRepairServiceSelect();
+  toast(currentLang==="hu"?"Szolgáltatási tétel mentve":"Service charge saved");
+};
+function editCatalogService(id){
+  const x=(db.serviceCatalog||[]).find(y=>y.id===id);if(!x)return;
+  editingCatalogServiceId=id;
+  $("#catalogServiceName").value=x.name||"";
+  $("#catalogServiceCode").value=x.code||"";
+  $("#catalogServiceCost").value=x.cost??0;
+  $("#catalogServiceUnit").value=x.unit||"";
+  $("#catalogServiceNotes").value=x.notes||"";
+  $("#catalogServiceActive").checked=x.active!==false;
+  $("#saveCatalogServiceBtn").textContent=t("saveService");
+  $("#cancelCatalogServiceEditBtn").style.display="";
+}
+function deleteCatalogService(id){
+  const x=(db.serviceCatalog||[]).find(y=>y.id===id);if(!x)return;
+  const used=db.units.reduce((n,u)=>n+(u.repairs||[]).reduce((m,r)=>m+(r.servicesUsed||[]).filter(z=>z.catalogId===id).length,0),0);
+  const msg=used
+    ? (currentLang==="hu"?`Ez a tétel ${used} korábbi munkában szerepel. A korábbi árak megmaradnak. Törlöd a listából?`:`This charge appears in ${used} historical job(s). Their saved price snapshots will remain. Delete it from the catalogue?`)
+    : (currentLang==="hu"?`Törlöd ezt a tételt: "${x.name}"?`:`Delete charge "${x.name}"?`);
+  if(!confirm(msg))return;
+  db.serviceCatalog=db.serviceCatalog.filter(y=>y.id!==id);
+  localSave();if(cloudReady)queueCloudSave();
+  renderServiceCatalog();populateRepairServiceSelect();
+  toast(currentLang==="hu"?"Szolgáltatási tétel törölve":"Service charge deleted");
+}
+function renderServiceCatalog(){
+  const list=$("#serviceCatalogList");if(!list)return;
+  const items=(db.serviceCatalog||[]).slice().sort((a,b)=>a.name.localeCompare(b.name));
+  list.innerHTML=items.length?items.map(x=>`<div class="catalog-row">
+    <div><b>${esc(x.name)}</b>${x.active===false?` <span class="badge">${t("inactive")}</span>`:""}${x.code?`<div class="sub">${esc(x.code)}</div>`:""}${x.notes?`<div class="sub">${esc(x.notes)}</div>`:""}</div>
+    <div class="sub">${esc(x.unit||"—")}</div>
+    <div class="price">${money(x.cost||0)}</div>
+    <div class="location-actions"><button class="btn small ghost" onclick="editCatalogService('${x.id}')">${currentLang==="hu"?"Szerkesztés":"Edit"}</button><button class="btn small danger" onclick="deleteCatalogService('${x.id}')">${currentLang==="hu"?"Törlés":"Delete"}</button></div>
+  </div>`).join(""):`<div class="empty">${t("noSavedServices")}</div>`;
+}
+
 function clearCatalogPartForm(){
   editingCatalogPartId=null;
   $("#catalogPartName").value="";$("#catalogPartNo").value="";$("#catalogPartCost").value="";$("#catalogPartSupplier").value="";$("#catalogPartNotes").value="";$("#catalogPartActive").checked=true;
@@ -1926,7 +2133,7 @@ $("#saveCatalogPartBtn").onclick=()=>{
   }else{
     db.partsCatalog.push({id:uid("part"),name,partNo,cost,supplier,notes,active,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});
   }
-  localSave();clearCatalogPartForm();renderPartCatalog();populateRepairPartSelect();
+  localSave();if(cloudReady)queueCloudSave();clearCatalogPartForm();renderPartCatalog();populateRepairPartSelect();
   toast(currentLang==="hu"?"Alkatrész mentve":"Part saved");
 };
 function editCatalogPart(id){
@@ -1942,7 +2149,7 @@ function deleteCatalogPart(id){
     ? (currentLang==="hu"?`Az alkatrész ${used} korábbi javításban szerepel. A korábbi javítások mentett árai megmaradnak. Törlöd a listából?`:`This part appears in ${used} historical repair(s). Their saved price snapshots will remain. Delete it from the catalogue?`)
     : (currentLang==="hu"?`Törlöd ezt az alkatrészt: "${p.name}"?`:`Delete part "${p.name}"?`);
   if(!confirm(msg))return;
-  db.partsCatalog=db.partsCatalog.filter(x=>x.id!==id);localSave();renderPartCatalog();populateRepairPartSelect();
+  db.partsCatalog=db.partsCatalog.filter(x=>x.id!==id);localSave();if(cloudReady)queueCloudSave();renderPartCatalog();populateRepairPartSelect();
   toast(currentLang==="hu"?"Alkatrész törölve":"Part deleted");
 }
 function renderPartCatalog(){
@@ -2171,16 +2378,141 @@ function mergeLocations(target,incoming){
   return {array:target,hospitals,wards};
 }
 
+function appendUniqueNote(existing,extra){
+  const a=String(existing||"").trim(),b=String(extra||"").trim();
+  if(!b)return a;
+  if(a.includes(b))return a;
+  return a ? `${a}\n${b}` : b;
+}
+
 function mergeParts(target,incoming){
   target=Array.isArray(target)?target:[];
-  let added=0;
-  for(const ip of (Array.isArray(incoming)?incoming:[])){
+  let added=0,updated=0,pricesUpdated=0;
+
+  for(const ip0 of (Array.isArray(incoming)?incoming:[])){
+    const ip=cloneJson(ip0);
     const pn=mergeNorm(ip.partNo),nm=mergeNorm(ip.name);
     let p=target.find(x=>(pn && mergeNorm(x.partNo)===pn) || (!pn && nm && mergeNorm(x.name)===nm));
-    if(!p){const c=cloneJson(ip);c.id=uid("part");target.push(c);added++}
-    else fillMissingScalars(p,ip,new Set(["id"]));
+
+    if(!p){
+      if(!ip.id)ip.id=uid("part");
+      if(ip.cost>0){
+        ip.priceHistory=Array.isArray(ip.priceHistory)?ip.priceHistory:[];
+        const ph={
+          cost:Number(ip.cost)||0,
+          asOf:ip.priceAsOf||"",
+          source:ip.priceSource||"",
+          recordedAt:new Date().toISOString()
+        };
+        if(!ip.priceHistory.some(x=>Number(x.cost)===ph.cost && String(x.asOf||"")===ph.asOf && String(x.source||"")===ph.source)){
+          ip.priceHistory.push(ph);
+        }
+      }
+      target.push(ip);added++;continue;
+    }
+
+    let touched=false;
+
+    // Preserve the canonical catalogue name, but remember alternative/source names.
+    if(ip.name && mergeNorm(ip.name)!==mergeNorm(p.name)){
+      p.aliases=Array.isArray(p.aliases)?p.aliases:[];
+      if(!p.aliases.some(x=>mergeNorm(x)===mergeNorm(ip.name))){
+        p.aliases.push(ip.name);touched=true;
+      }
+    }
+
+    // Append new source notes without destroying existing notes.
+    if(ip.notes){
+      const before=String(p.notes||"");
+      p.notes=appendUniqueNote(p.notes,ip.notes);
+      if(p.notes!==before)touched=true;
+    }
+
+    // Dated prices may refresh the current catalogue price.
+    // Older imported prices never roll the catalogue backwards.
+    const incomingCost=Number(ip.cost)||0;
+    const currentCost=Number(p.cost)||0;
+    const incomingDate=String(ip.priceAsOf||"");
+    const currentDate=String(p.priceAsOf||"");
+
+    const incomingIsNewer =
+      !!incomingDate && (!currentDate || incomingDate>currentDate);
+    const sameDatedPrice =
+      !!incomingDate && incomingDate===currentDate && incomingCost===currentCost;
+    const shouldUpdatePrice =
+      incomingCost>0 &&
+      (
+        currentCost<=0 ||
+        incomingIsNewer ||
+        (!currentDate && !!incomingDate)
+      ) &&
+      !sameDatedPrice;
+
+    if(shouldUpdatePrice){
+      p.priceHistory=Array.isArray(p.priceHistory)?p.priceHistory:[];
+
+      // Keep the previous non-zero catalogue price before replacing it.
+      if(currentCost>0){
+        const old={
+          cost:currentCost,
+          asOf:currentDate||"",
+          source:p.priceSource||"",
+          recordedAt:new Date().toISOString()
+        };
+        if(!p.priceHistory.some(x=>Number(x.cost)===old.cost && String(x.asOf||"")===old.asOf && String(x.source||"")===old.source)){
+          p.priceHistory.push(old);
+        }
+      }
+
+      p.cost=incomingCost;
+      p.priceAsOf=incomingDate;
+      p.priceSource=ip.priceSource||"";
+      p.priceHistory.push({
+        cost:incomingCost,
+        asOf:incomingDate,
+        source:ip.priceSource||"",
+        recordedAt:new Date().toISOString()
+      });
+      pricesUpdated++;touched=true;
+    }else{
+      // Even when price stays unchanged, fill missing source/date metadata.
+      if(!p.priceAsOf && ip.priceAsOf){p.priceAsOf=ip.priceAsOf;touched=true}
+      if(!p.priceSource && ip.priceSource){p.priceSource=ip.priceSource;touched=true}
+    }
+
+    // Fill other genuinely missing scalar metadata, but never overwrite populated values.
+    fillMissingScalars(p,ip,new Set(["id","name","cost","notes","aliases","priceHistory","priceAsOf","priceSource"]));
+
+    if(touched){
+      p.updatedAt=new Date().toISOString();
+      updated++;
+    }
   }
-  return {array:target,added};
+  return {array:target,added,updated,pricesUpdated};
+}
+
+function mergeServiceCatalog(target,incoming){
+  target=Array.isArray(target)?target:[];
+  incoming=Array.isArray(incoming)?incoming:[];
+  let added=0,updated=0;
+  for(const raw of incoming){
+    const item=cloneJson(raw);
+    const code=mergeNorm(item.code),name=mergeNorm(item.name);
+    let x=target.find(y=>(code && mergeNorm(y.code)===code) || (!code && name && mergeNorm(y.name)===name));
+    if(!x){
+      if(!item.id)item.id=uid("service");
+      if(item.active==null)item.active=true;
+      item.cost=Number(item.cost)||0;
+      target.push(item);added++;continue;
+    }
+    let touched=false;
+    if((Number(x.cost)||0)<=0 && Number(item.cost)>0){x.cost=Number(item.cost);touched=true}
+    for(const k of ["unit","notes","code"]){
+      if((x[k]===undefined||x[k]===null||x[k]==="") && item[k]){x[k]=item[k];touched=true}
+    }
+    if(touched){x.updatedAt=new Date().toISOString();updated++}
+  }
+  return {array:target,added,updated};
 }
 
 function mergeServiceKits(target,incoming){
@@ -2203,7 +2535,7 @@ function mergeServiceKits(target,incoming){
 function mergeDatabases(base,incoming){
   const merged=cloneJson(base);
   const report={newUnits:0,matchedUnits:0,newCheckups:0,newRepairs:0,newPhotos:0,
-    newHospitals:0,newWards:0,newParts:0,reassignedUnitIds:0};
+    newHospitals:0,newWards:0,newParts:0,updatedParts:0,pricesUpdated:0,newServices:0,updatedServices:0,reassignedUnitIds:0};
 
   merged.units=Array.isArray(merged.units)?merged.units:[];
   for(const raw of incoming.units){
@@ -2229,7 +2561,12 @@ function mergeDatabases(base,incoming){
   let m=mergeLocations(merged.locations,incoming.locations);
   merged.locations=m.array;report.newHospitals=m.hospitals;report.newWards=m.wards;
   m=mergeParts(merged.partsCatalog,incoming.partsCatalog);
-  merged.partsCatalog=m.array;report.newParts=m.added;
+  merged.partsCatalog=m.array;
+  report.newParts=m.added;
+  report.updatedParts=m.updated;
+  report.pricesUpdated=m.pricesUpdated;
+  m=mergeServiceCatalog(merged.serviceCatalog,incoming.serviceCatalog);
+  merged.serviceCatalog=m.array;report.newServices=m.added;report.updatedServices=m.updated;
   m=mergeServiceKits(merged.serviceKits,incoming.serviceKits);
   merged.serviceKits=m.array;
 
@@ -2251,6 +2588,10 @@ function mergeSummary(r){
     `Új kórházak: ${r.newHospitals}`,
     `Új osztályok: ${r.newWards}`,
     `Új alkatrészek: ${r.newParts}`,
+    `Frissített meglévő alkatrészek: ${r.updatedParts}`,
+    `Frissített katalógusárak: ${r.pricesUpdated}`,
+    `Új szolgáltatási / munkadíjtételek: ${r.newServices}`,
+    `Frissített szolgáltatási tételek: ${r.updatedServices}`,
     r.reassignedUnitIds?`ID-ütközés miatt új Mediola ID-t kapott: ${r.reassignedUnitIds}`:""
   ] : [
     `New units: ${r.newUnits}`,
@@ -2261,6 +2602,10 @@ function mergeSummary(r){
     `New hospitals: ${r.newHospitals}`,
     `New wards: ${r.newWards}`,
     `New parts: ${r.newParts}`,
+    `Updated existing parts: ${r.updatedParts}`,
+    `Updated catalogue prices: ${r.pricesUpdated}`,
+    `New service / labour charges: ${r.newServices}`,
+    `Updated service charges: ${r.updatedServices}`,
     r.reassignedUnitIds?`Units given a new Mediola ID because of an ID collision: ${r.reassignedUnitIds}`:""
   ];
   return lines.filter(Boolean).join("\n");
@@ -2442,6 +2787,23 @@ function normalizeDB(){
   if(!Array.isArray(db.serviceKits)||!db.serviceKits.length)db.serviceKits=builtInServiceKits();
   db.partsCatalog=db.partsCatalog||[];
   db.partsCatalog.forEach(p=>{p.id=p.id||uid("part");p.cost=Number(p.cost)||0;if(p.supplier==null)p.supplier="";if(p.active==null)p.active=true});
+  if(!Array.isArray(db.serviceCatalog)){
+    db.serviceCatalog=[
+      {id:"service_callout",name:"Kiszállási költség",code:"KISZALLAS",cost:0,unit:"per visit",notes:"",active:true},
+      {id:"service_inspection",name:"Felülvizsgálat",code:"FELULVIZSGALAT",cost:0,unit:"per inspection",notes:"",active:true},
+      {id:"service_diagnostics",name:"Bevizsgálás / diagnosztika",code:"DIAGNOSZTIKA",cost:0,unit:"per job",notes:"",active:true},
+      {id:"service_fixed_labour",name:"Munkadíj (fix)",code:"MUNKADIJ-FIX",cost:0,unit:"per job",notes:"",active:true},
+      {id:"service_km",name:"Kilométerdíj",code:"KM",cost:0,unit:"per km",notes:"",active:true},
+      {id:"service_commissioning",name:"Beüzemelés",code:"BEUZEMELES",cost:0,unit:"per unit",notes:"",active:true},
+      {id:"service_shipping",name:"Szállítás / futár",code:"SZALLITAS",cost:0,unit:"per shipment",notes:"",active:true},
+      {id:"service_urgent",name:"Sürgősségi felár",code:"SURGOS",cost:0,unit:"per job",notes:"",active:true}
+    ];
+  }
+  db.serviceCatalog.forEach(x=>{
+    x.id=x.id||uid("service");x.cost=Number(x.cost)||0;
+    if(x.code==null)x.code="";if(x.unit==null)x.unit="";if(x.notes==null)x.notes="";
+    if(x.active==null)x.active=true;
+  });
   ensureMaintenanceParts();
   db.locations=db.locations||[];
   db.locations.forEach(h=>{
@@ -2477,6 +2839,11 @@ function normalizeDB(){
       if(!r.eventType)r.eventType="Repair";
       r.partsUsed=r.partsUsed||[];
       r.partsUsed.forEach(p=>{p.id=p.id||uid("usedpart");p.qty=Number(p.qty)||1;p.unitCost=Number(p.unitCost)||0});
+      r.servicesUsed=r.servicesUsed||[];
+      r.servicesUsed.forEach(x=>{
+        x.id=x.id||uid("usedservice");x.qty=Number(x.qty)||1;x.unitCost=Number(x.unitCost)||0;
+        if(x.code==null)x.code="";if(x.unit==null)x.unit="";
+      });
       if(r.laborHours==null)r.laborHours=0;
       if(r.hourlyRate==null)r.hourlyRate=0;
       if(r.otherCost==null)r.otherCost=0;
@@ -2524,6 +2891,7 @@ async function fetchCloudRow(){
 }
 async function applyCloudRow(row){
   if(!row || !cloudPayloadLooksInitialized(row.data))return false;
+  const needsServiceCatalogMigration=!Array.isArray(row.data.serviceCatalog);
   suppressCloudSave=true;
   try{
     db=row.data;
@@ -2539,6 +2907,7 @@ async function applyCloudRow(row){
   }finally{
     suppressCloudSave=false;
   }
+  if(needsServiceCatalogMigration && cloudReady)queueCloudSave();
   return true;
 }
 async function loadCloudDatabase(){
