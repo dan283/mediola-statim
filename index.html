@@ -297,7 +297,8 @@
     <button class="btn primary" id="addUnitBtn">+ Add unit</button>
     <button class="btn" id="manageLocationsBtn">Hospitals & wards</button>
     <button class="btn" id="managePartsBtn">Parts & labour</button>
-    <button class="btn" id="openJsonBtn">Open JSON</button>
+    <button class="btn" id="openJsonBtn">Open JSON (replace)</button>
+    <button class="btn" id="mergeJsonBtn">Import / Merge JSON</button>
     <button class="btn" id="saveJsonBtn">Save JSON</button>
     <button class="btn" id="csvBtn">Export CSV</button>
   </div>
@@ -379,6 +380,7 @@
 </div>
 
 <input type="file" id="jsonFile" accept=".json,application/json" hidden />
+<input type="file" id="mergeJsonFile" accept=".json,application/json" hidden />
 
 <div class="modal" id="unitModal">
   <div class="dialog">
@@ -741,7 +743,7 @@ let cloudSaveQueued = false;
 let cloudConflict = false;
 let suppressCloudSave = false;
 
-const APP_VERSION = 8;
+const APP_VERSION = 9;
 const blankDB = () => ({
   app:"Mediola STATIM Service Manager",
   version:APP_VERSION,
@@ -788,7 +790,7 @@ const I18N = {
   en: {
     appTitle:"Mediola STATIM Service Manager",
     appSub:"Date / cycle maintenance, inspection & repair tracking",
-    addUnit:"+ Add unit", hospitals:"Hospitals & wards", partsLabour:"Parts & labour", openJson:"Open JSON", saveJson:"Save JSON", exportCsv:"Export CSV",
+    addUnit:"+ Add unit", hospitals:"Hospitals & wards", partsLabour:"Parts & labour", openJson:"Open JSON (replace)", mergeJson:"Import / Merge JSON", saveJson:"Save JSON", exportCsv:"Export CSV",
     filter:"Filter", search:"Search", searchPh:"Serial, model, hospital, notes...", hospital:"Hospital", allHospitals:"All hospitals",
     department:"Department", allDepartments:"All departments", checkupType:"Checkup type", bothCheckups:"6 & 12 month",
     due:"Due", all:"All", overdue:"Overdue", next30:"Due in next 30 days", next60:"Due in next 60 days", next90:"Due in next 90 days", noDue:"No due date",
@@ -856,7 +858,7 @@ const I18N = {
   hu: {
     appTitle:"Mediola STATIM Szervizkezelő",
     appSub:"Dátum- és ciklusalapú karbantartások, felülvizsgálatok és javítások",
-    addUnit:"+ Berendezés", hospitals:"Kórházak és osztályok", partsLabour:"Alkatrészek és munkadíj", openJson:"JSON megnyitása", saveJson:"JSON mentése", exportCsv:"CSV export",
+    addUnit:"+ Berendezés", hospitals:"Kórházak és osztályok", partsLabour:"Alkatrészek és munkadíj", openJson:"JSON megnyitása (csere)", mergeJson:"JSON hozzáadása / egyesítése", saveJson:"JSON mentése", exportCsv:"CSV export",
     filter:"Szűrés", search:"Keresés", searchPh:"Gyári szám, modell, kórház, megjegyzés...", hospital:"Kórház", allHospitals:"Összes kórház",
     department:"Osztály", allDepartments:"Összes osztály", checkupType:"Felülvizsgálat típusa", bothCheckups:"6 és 12 havi",
     due:"Esedékesség", all:"Összes", overdue:"Lejárt", next30:"Következő 30 napban esedékes", next60:"Következő 60 napban esedékes", next90:"Következő 90 napban esedékes", noDue:"Nincs esedékességi dátum",
@@ -1116,6 +1118,7 @@ function applyLanguage(){
   $("#manageLocationsBtn").textContent=L("hospitals");
   $("#managePartsBtn").textContent=L("partsLabour");
   $("#openJsonBtn").textContent=L("openJson");
+  $("#mergeJsonBtn").textContent=L("mergeJson");
   $("#saveJsonBtn").textContent=L("saveJson");
   $("#csvBtn").textContent=L("exportCsv");
   $("#search").placeholder=L("searchPh");
@@ -2060,6 +2063,247 @@ function deleteWard(hospitalId,wardId){
 }
 
 /* JSON / CSV */
+
+/* Safe additive JSON merge */
+const mergeNorm = v => String(v ?? "").trim().toLowerCase().replace(/\s+/g," ");
+const cloneJson = v => JSON.parse(JSON.stringify(v));
+
+function fillMissingScalars(target,source,skip=new Set()){
+  if(!target || !source || typeof target!=="object" || typeof source!=="object")return;
+  for(const [k,v] of Object.entries(source)){
+    if(skip.has(k) || Array.isArray(v))continue;
+    if(v && typeof v==="object"){
+      if(!target[k] || typeof target[k]!=="object" || Array.isArray(target[k]))target[k]={};
+      fillMissingScalars(target[k],v,skip);
+    }else if((target[k]===undefined || target[k]===null || target[k]==="") && v!==undefined && v!==null && v!==""){
+      target[k]=v;
+    }
+  }
+}
+
+function nextAvailableUnitId(units,preferred=""){
+  const used=new Set(units.map(u=>mergeNorm(u.unitId)).filter(Boolean));
+  if(preferred && !used.has(mergeNorm(preferred)))return preferred;
+  let n=1,id;
+  do{id="STAT-"+String(n++).padStart(3,"0")}while(used.has(mergeNorm(id)));
+  return id;
+}
+
+function findMatchingUnit(units,incoming){
+  const serial=mergeNorm(incoming.serial);
+  if(serial){
+    const bySerial=units.find(u=>mergeNorm(u.serial)===serial);
+    if(bySerial)return bySerial;
+  }
+
+  const iid=mergeNorm(incoming.unitId);
+  if(!iid)return null;
+  const byId=units.find(u=>mergeNorm(u.unitId)===iid);
+  if(!byId)return null;
+
+  const existingSerial=mergeNorm(byId.serial);
+  if(serial && existingSerial && serial===existingSerial)return byId;
+  if(serial && existingSerial && serial!==existingSerial)return null;
+
+  const sameHospital=mergeNorm(byId.hospital)===mergeNorm(incoming.hospital);
+  const sameType=mergeNorm(byId.type||byId.model)===mergeNorm(incoming.type||incoming.model);
+  const sameProduct=!mergeNorm(byId.productNo) || !mergeNorm(incoming.productNo) ||
+                    mergeNorm(byId.productNo)===mergeNorm(incoming.productNo);
+  const sameAsset=mergeNorm(byId.assetNo) && mergeNorm(byId.assetNo)===mergeNorm(incoming.assetNo);
+  const sameTag=mergeNorm(byId.tag) && mergeNorm(byId.tag)===mergeNorm(incoming.tag);
+  return (sameAsset || sameTag || (sameHospital && sameType && sameProduct)) ? byId : null;
+}
+
+function recordKey(rec,kind){
+  if(!rec || typeof rec!=="object")return "";
+  if(kind==="checkup")return [
+    mergeNorm(rec.type),mergeNorm(rec.date),mergeNorm(rec.cycleCount),mergeNorm(rec.jobNo),
+    mergeNorm(rec.technician),mergeNorm(rec.result),mergeNorm(rec.serviceKit),mergeNorm(rec.notes)
+  ].join("|");
+  if(kind==="repair")return [
+    mergeNorm(rec.eventType),mergeNorm(rec.date),mergeNorm(rec.completedDate),mergeNorm(rec.jobNo),
+    mergeNorm(rec.technician),mergeNorm(rec.status),mergeNorm(rec.parts),mergeNorm(rec.notes)
+  ].join("|");
+  if(kind==="photo"){
+    const d=String(rec.dataUrl||"");
+    return [mergeNorm(rec.name),mergeNorm(rec.addedAt),d.length,d.slice(0,40),d.slice(-40)].join("|");
+  }
+  return JSON.stringify(rec);
+}
+
+function mergeHistory(target,incoming,kind){
+  target=Array.isArray(target)?target:[];
+  incoming=Array.isArray(incoming)?incoming:[];
+  const ids=new Set(target.map(x=>mergeNorm(x?.id)).filter(Boolean));
+  const keys=new Set(target.map(x=>recordKey(x,kind)).filter(Boolean));
+  let added=0;
+  for(const item of incoming){
+    const id=mergeNorm(item?.id), key=recordKey(item,kind);
+    if((id && ids.has(id)) || (key && keys.has(key)))continue;
+    const copy=cloneJson(item);
+    if(!copy.id)copy.id=uid(kind==="checkup"?"check":kind);
+    target.push(copy);
+    ids.add(mergeNorm(copy.id));
+    if(key)keys.add(key);
+    added++;
+  }
+  return {array:target,added};
+}
+
+function mergeLocations(target,incoming){
+  target=Array.isArray(target)?target:[];
+  let hospitals=0,wards=0;
+  for(const ih of (Array.isArray(incoming)?incoming:[])){
+    let h=target.find(x=>mergeNorm(x.name)===mergeNorm(ih.name));
+    if(!h){
+      h=cloneJson(ih);h.id=uid("hospital");h.wards=Array.isArray(h.wards)?h.wards:[];
+      h.wards.forEach(w=>w.id=uid("ward"));
+      target.push(h);hospitals++;wards+=h.wards.length;continue;
+    }
+    fillMissingScalars(h,ih,new Set(["id","wards"]));
+    h.wards=Array.isArray(h.wards)?h.wards:[];
+    for(const iw of (Array.isArray(ih.wards)?ih.wards:[])){
+      let w=h.wards.find(x=>mergeNorm(x.name)===mergeNorm(iw.name));
+      if(!w){w=cloneJson(iw);w.id=uid("ward");h.wards.push(w);wards++}
+      else fillMissingScalars(w,iw,new Set(["id"]));
+    }
+  }
+  return {array:target,hospitals,wards};
+}
+
+function mergeParts(target,incoming){
+  target=Array.isArray(target)?target:[];
+  let added=0;
+  for(const ip of (Array.isArray(incoming)?incoming:[])){
+    const pn=mergeNorm(ip.partNo),nm=mergeNorm(ip.name);
+    let p=target.find(x=>(pn && mergeNorm(x.partNo)===pn) || (!pn && nm && mergeNorm(x.name)===nm));
+    if(!p){const c=cloneJson(ip);c.id=uid("part");target.push(c);added++}
+    else fillMissingScalars(p,ip,new Set(["id"]));
+  }
+  return {array:target,added};
+}
+
+function mergeServiceKits(target,incoming){
+  target=Array.isArray(target)?target:[];
+  let added=0,components=0;
+  for(const ik of (Array.isArray(incoming)?incoming:[])){
+    let k=target.find(x=>mergeNorm(x.code)===mergeNorm(ik.code));
+    if(!k){target.push(cloneJson(ik));added++;continue}
+    k.components=Array.isArray(k.components)?k.components:[];
+    for(const ic of (Array.isArray(ik.components)?ik.components:[])){
+      const pn=mergeNorm(ic.partNo),nm=mergeNorm(ic.name);
+      if(!k.components.some(x=>(pn && mergeNorm(x.partNo)===pn)||(!pn && nm && mergeNorm(x.name)===nm))){
+        k.components.push(cloneJson(ic));components++;
+      }
+    }
+  }
+  return {array:target,added,components};
+}
+
+function mergeDatabases(base,incoming){
+  const merged=cloneJson(base);
+  const report={newUnits:0,matchedUnits:0,newCheckups:0,newRepairs:0,newPhotos:0,
+    newHospitals:0,newWards:0,newParts:0,reassignedUnitIds:0};
+
+  merged.units=Array.isArray(merged.units)?merged.units:[];
+  for(const raw of incoming.units){
+    const iu=cloneJson(raw), match=findMatchingUnit(merged.units,iu);
+    if(!match){
+      const requested=String(iu.unitId||"").trim();
+      const allocated=nextAvailableUnitId(merged.units,requested);
+      if(requested && mergeNorm(allocated)!==mergeNorm(requested)){
+        report.reassignedUnitIds++;
+        const note=`Imported original Mediola Unit ID: ${requested}`;
+        iu.legacyNotes=iu.legacyNotes?`${iu.legacyNotes}\n${note}`:note;
+      }
+      iu.unitId=allocated;merged.units.push(iu);report.newUnits++;continue;
+    }
+
+    report.matchedUnits++;
+    fillMissingScalars(match,iu,new Set(["id","unitId","checkups","repairs","photos"]));
+    let m=mergeHistory(match.checkups,iu.checkups,"checkup");match.checkups=m.array;report.newCheckups+=m.added;
+    m=mergeHistory(match.repairs,iu.repairs,"repair");match.repairs=m.array;report.newRepairs+=m.added;
+    m=mergeHistory(match.photos,iu.photos,"photo");match.photos=m.array;report.newPhotos+=m.added;
+  }
+
+  let m=mergeLocations(merged.locations,incoming.locations);
+  merged.locations=m.array;report.newHospitals=m.hospitals;report.newWards=m.wards;
+  m=mergeParts(merged.partsCatalog,incoming.partsCatalog);
+  merged.partsCatalog=m.array;report.newParts=m.added;
+  m=mergeServiceKits(merged.serviceKits,incoming.serviceKits);
+  merged.serviceKits=m.array;
+
+  // Merge means additive: keep current shared DB identity/settings.
+  merged.databaseName=base.databaseName;
+  merged.settings=cloneJson(base.settings||{hourlyRate:0});
+  merged.version=APP_VERSION;
+  merged.exportedAt=new Date().toISOString();
+  return {merged,report};
+}
+
+function mergeSummary(r){
+  const lines=currentLang==="hu" ? [
+    `Új berendezések: ${r.newUnits}`,
+    `Meglévő berendezések felismerve: ${r.matchedUnits}`,
+    `Új felülvizsgálatok: ${r.newCheckups}`,
+    `Új javítások / szervizek: ${r.newRepairs}`,
+    `Új fotók: ${r.newPhotos}`,
+    `Új kórházak: ${r.newHospitals}`,
+    `Új osztályok: ${r.newWards}`,
+    `Új alkatrészek: ${r.newParts}`,
+    r.reassignedUnitIds?`ID-ütközés miatt új Mediola ID-t kapott: ${r.reassignedUnitIds}`:""
+  ] : [
+    `New units: ${r.newUnits}`,
+    `Existing units matched: ${r.matchedUnits}`,
+    `New checkups: ${r.newCheckups}`,
+    `New repairs / service records: ${r.newRepairs}`,
+    `New photos: ${r.newPhotos}`,
+    `New hospitals: ${r.newHospitals}`,
+    `New wards: ${r.newWards}`,
+    `New parts: ${r.newParts}`,
+    r.reassignedUnitIds?`Units given a new Mediola ID because of an ID collision: ${r.reassignedUnitIds}`:""
+  ];
+  return lines.filter(Boolean).join("\n");
+}
+
+$("#mergeJsonBtn").onclick=()=>$("#mergeJsonFile").click();
+$("#mergeJsonFile").onchange=async()=>{
+  const f=$("#mergeJsonFile").files?.[0];if(!f)return;
+  try{
+    const incoming=JSON.parse(await f.text());
+    if(!incoming || !Array.isArray(incoming.units))throw new Error("Not a Mediola STATIM database.");
+
+    if(cloudReady){
+      const latest=await fetchCloudRow(), latestVersion=Number(latest.version)||1;
+      if(latestVersion!==cloudVersion){
+        await applyCloudRow(latest);
+        alert(currentLang==="hu"
+          ?"A közös adatbázis megváltozott egy másik gépen. Betöltöttem a legfrissebb verziót. Indítsd újra az egyesítést."
+          :"The shared database changed on another device. I loaded the newest version. Run Import / Merge JSON again.");
+        return;
+      }
+    }
+
+    const result=mergeDatabases(db,incoming);
+    const msg=currentLang==="hu"
+      ? `A JSON ezt fogja HOZZÁADNI:\n\n${mergeSummary(result.report)}\n\nA meglévő kitöltött mezőket nem írja felül, és nem töröl meglévő adatot.\n\nFolytatod?`
+      : `This JSON will ADD:\n\n${mergeSummary(result.report)}\n\nExisting populated fields will not be overwritten and no existing data will be deleted.\n\nContinue?`;
+    if(!confirm(msg))return;
+
+    suppressCloudSave=true;
+    try{
+      db=result.merged;normalizeDB();
+      $("#dbName").value=db.databaseName||"Mediola STATIM database";
+      await localSave();render();
+    }finally{suppressCloudSave=false}
+
+    if(cloudReady){queueCloudSave();toast(currentLang==="hu"?"JSON egyesítve — mentés a közös adatbázisba":"JSON merged — saving to shared database")}
+    else toast(currentLang==="hu"?"JSON egyesítve":"JSON merged");
+  }catch(e){
+    alert((currentLang==="hu"?"A JSON egyesítése sikertelen: ":"Could not merge JSON: ")+(e.message||String(e)));
+  }finally{$("#mergeJsonFile").value=""}
+};
+
 $("#openJsonBtn").onclick=async()=>{
   if(window.showOpenFilePicker){
     try{
@@ -2131,7 +2375,7 @@ $("#csvBtn").onclick=()=>{
 /* Filters/events */
 ["search","departmentFilter","intervalFilter","dueFilter","repairFilter","unitStatusFilter","archiveFilter","sortBy"].forEach(id=>$("#"+id).addEventListener(id==="search"?"input":"change",render));
 $("#hospitalFilter").onchange=()=>{rebuildFilters();render()};
-$("#dbName").onchange=()=>{db.databaseName=$("#dbName").value;localSave()};
+$("#dbName").onchange=()=>{db.databaseName=$("#dbName").value;localSave();if(cloudReady)queueCloudSave()};
 $$("[data-quick]").forEach(b=>b.onclick=()=>{
   const q=b.dataset.quick;$("#dueFilter").value=q==="overdue"?"overdue":q==="30"?"30":"all";$("#repairFilter").value=q==="repair"?"open":"";
   $$("#aside .seg button").forEach?.(()=>{});
