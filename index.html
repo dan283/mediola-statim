@@ -298,7 +298,7 @@
 <header class="topbar">
   <div class="brand">
     <div class="logo">M</div>
-    <div><h1>Mediola STATIM Service Manager</h1><small>6 / 12 month inspection & repair tracking</small></div>
+    <div><h1>Mediola STATIM Service Manager</h1><small>Maintenance, inspection & repair tracking</small></div>
   </div>
   <div class="top-actions">
     <div class="user-strip" id="userStrip" style="display:none">
@@ -522,6 +522,14 @@
             </select>
           </div>
           <div class="maintenance-box" id="profileSummary"><strong>Maintenance rule</strong><div id="profileSummaryText"></div></div>
+          <div class="field" id="nextMaintenanceKitField">
+            <label id="lblNextMaintenanceKit">Next maintenance kit</label>
+            <select id="fNextMaintenanceKit">
+              <option value="">Automatic from history</option>
+              <option value="SERVICE-KIT-3">KIT3</option>
+              <option value="SERVICE-KIT-4">KIT4</option>
+            </select>
+          </div>
           <div class="checkrow">
             <input id="fSixEnabled" type="checkbox" checked />
             <div style="flex:1"><b>6 month checkup</b><div class="sub">Track a recurring 6-month inspection.</div></div>
@@ -591,7 +599,11 @@
   <div class="dialog sm">
     <div class="dialog-head"><h2>Record completed checkup</h2><div class="spacer"></div><button class="x" data-close="checkModal">×</button></div>
     <div class="dialog-body grid2">
-      <div class="field"><label>Checkup type</label><select id="cType"><option value="6">6 month</option><option value="12">12 month</option></select></div>
+      <div class="field"><label>Checkup / maintenance type</label><select id="cType">
+        <option value="auto">Automatic / recommended</option>
+        <option value="6">6 month / 500 cycles</option>
+        <option value="12">Annual</option>
+      </select></div>
       <div class="field"><label id="lblCheckDate">Checkup date</label><input id="cDate" type="date" /></div>
       <div class="field"><label id="lblCheckCycles">Cycle count</label><input id="cCycleCount" type="number" min="0" step="1" /></div>
       <div class="field"><label>Result</label><select id="cResult"><option value="Passed">Passed</option><option value="Passed with notes">Passed with notes</option><option value="Repair required">Repair required</option><option value="Failed">Failed</option></select></div>
@@ -602,9 +614,10 @@
       <div class="field span2">
         <label id="lblServiceKit">Scheduled maintenance kit</label>
         <select id="cServiceKit">
-          <option value="">No automatic kit</option>
-          <option value="SERVICE-KIT-3">SERVICE-KIT-3</option>
-          <option value="SERVICE-KIT-4">SERVICE-KIT-4</option>
+          <option value="AUTO">Automatic — recommended maintenance</option>
+          <option value="SERVICE-KIT-3">SERVICE-KIT-3 — routine 6 month / 500 cycle</option>
+          <option value="SERVICE-KIT-4">SERVICE-KIT-4 — annual (includes routine items)</option>
+          <option value="">No maintenance parts</option>
         </select>
       </div>
       <div class="maintenance-box span2" id="maintenanceKitBox">
@@ -854,7 +867,7 @@ let cloudSaveQueued = false;
 let cloudConflict = false;
 let suppressCloudSave = false;
 
-const APP_VERSION = 13;
+const APP_VERSION = 15;
 const blankDB = () => ({
   app:"Mediola STATIM Service Manager",
   version:APP_VERSION,
@@ -932,12 +945,17 @@ const I18N = {
     unitId:"Mediola Unit ID", statimType:"STATIM type", productNo:"Model / product no.", manufacturing:"Manufacturing year / date",
     cycleCount:"Current cycle count", cycleCountDate:"Cycle count date", software:"Current software", interfaceFirmware:"Interface firmware / IF",
     accessories:"Accessories / cassettes", cassetteCount:"Number of cassettes", maintenanceProfile:"Maintenance profile",
-    profileAuto:"Automatic from STATIM type", profile5000:"STATIM 5000S / G4 — 6 months or 500 cycles + annual", profileCalendar:"Calendar only — 6 / 12 months",
-    maintenanceRule:"Maintenance rule", profileSmartText:"6-month maintenance is due at 6 months OR 500 cycles, whichever comes first. Annual technician maintenance uses SERVICE-KIT-4.",
+    profileAuto:"Automatic from STATIM type", profile5000:"STATIM 5000S / G4 — one 6-month / 500-cycle service, KIT3 ↔ KIT4", profileCalendar:"Calendar only — 6 / 12 months",
+    maintenanceRule:"Maintenance rule", profileSmartText:"One maintenance cycle: every 6 months or 500 cycles, whichever comes first. The required kit alternates automatically KIT3 → KIT4 → KIT3 → KIT4.",
     profileCalendarText:"Date-based 6- and 12-month tracking only. No automatic cycle or kit rules.",
     last6Cycle:"Cycles at last 6m/500-cycle service", next6Cycle:"Next cycle service due", cyclesRemaining:"{n} cycles remaining", cycleDueNow:"Cycle service due now",
     kitRecommended:"Recommended maintenance", createMaintenanceRecord:"Also create a completed maintenance event with these parts in repair/service history.",
-    noAutomaticKit:"No automatic kit", scheduledKit:"Scheduled maintenance kit", cassetteUnknown:"Cassette count unknown — verify seal quantity.",
+    noAutomaticKit:"No maintenance parts", scheduledKit:"Maintenance package", cassetteUnknown:"Cassette count unknown — verify seal quantity.",
+    automaticRecommended:"Automatic / recommended", automaticKit:"Automatic — next alternating kit",
+    routineKitLabel:"KIT3 — alternating maintenance kit", annualKitLabel:"KIT4 — alternating maintenance kit",
+    kit4IncludesRoutine:"KIT4 is the larger alternating maintenance package; after KIT4 the next scheduled package is KIT3.",
+    recommendedNow:"Recommended maintenance", nextMaintenance:"Next maintenance", annualMaintenance:"", dueReasonDate:"6-month interval", dueReasonCycles:"500-cycle interval", dueReasonAnnual:"", 
+    nextMaintenanceKit:"Next maintenance kit", autoFromHistory:"Automatic from history", lastMaintenance:"Last maintenance", nextMaintenanceDue:"Next maintenance due",
     identification:"Identification", locationContacts:"Location & contacts", technicalData:"Technical data",
     notesLegacy:"Notes & legacy data", legacyNotes:"Imported / legacy notes",
     asset:"Asset / inventory no.", assetShort:"Asset no.", customerIdentifier:"Identifier / delivery note no.", hospitalOrderNo:"Hospital order no.", naturasoftNo:"NaturaSoft no.",
@@ -955,7 +973,7 @@ const I18N = {
     last6:"Last 6 month checkup", next6:"Next 6 month due", last12:"Last 12 month checkup", next12:"Next 12 month due",
     calc6:"Calculate next 6m from last", calc12:"Calculate next 12m from last", record:"Record", archiveUnit:"Archive this unit",
     archiveHelp:"Keeps history but hides it from the default active list.", deleteUnit:"Delete unit", cancel:"Cancel", saveChanges:"Save changes",
-    completedCheckHelp:"Completing maintenance updates the dates automatically. For STATIM 5000S / G4, the 6-month service is also tracked at +500 cycles, whichever comes first, and SERVICE-KIT-3 / SERVICE-KIT-4 are recommended automatically.",
+    completedCheckHelp:"Use Automatic / recommended. Every completed maintenance advances the same 6-month / 500-cycle schedule and flips the next package: KIT3 → KIT4 or KIT4 → KIT3.",
     recordCompleted:"+ Record completed checkup", checkHistory:"Checkup history", addRepair:"+ Add repair / fault", repairHistory:"Repair history",
     addPhotos:"Add photos", photoHelp:"Click or drag images here. Images are resized to max 1600 px and compressed before being embedded in the JSON.",
     storedPhotosTitle:"Stored photos", date:"Date", type:"Type", detailsCol:"Details", techStatus:"Technician / status",
@@ -1016,12 +1034,17 @@ const I18N = {
     unitId:"Mediola berendezésazonosító", statimType:"STATIM típus", productNo:"Modell / termékszám", manufacturing:"Gyártási év / dátum",
     cycleCount:"Aktuális ciklusszám", cycleCountDate:"Ciklusszám dátuma", software:"Aktuális szoftver", interfaceFirmware:"Interfész firmware / IF",
     accessories:"Tartozékok / kazetták", cassetteCount:"Kazetták száma", maintenanceProfile:"Karbantartási profil",
-    profileAuto:"Automatikus a STATIM típus alapján", profile5000:"STATIM 5000S / G4 — 6 hónap vagy 500 ciklus + éves", profileCalendar:"Csak naptári — 6 / 12 hónap",
-    maintenanceRule:"Karbantartási szabály", profileSmartText:"A 6 havi karbantartás 6 hónap VAGY 500 ciklus után esedékes, amelyik előbb bekövetkezik. Az éves technikusi karbantartás SERVICE-KIT-4.",
+    profileAuto:"Automatikus a STATIM típus alapján", profile5000:"STATIM 5000S / G4 — egy 6 havi / 500 ciklusos szerviz, KIT3 ↔ KIT4", profileCalendar:"Csak naptári — 6 / 12 hónap",
+    maintenanceRule:"Karbantartási szabály", profileSmartText:"Egyetlen karbantartási ciklus van: 6 hónap vagy 500 ciklus, amelyik előbb bekövetkezik. A szükséges készlet automatikusan váltakozik: KIT3 → KIT4 → KIT3 → KIT4.",
     profileCalendarText:"Csak dátumalapú 6 és 12 havi nyilvántartás. Nincs automatikus ciklus- vagy szervizkészlet-szabály.",
     last6Cycle:"Ciklusszám az utolsó 6 havi / 500 ciklusos szerviznél", next6Cycle:"Következő ciklusos szerviz esedékes", cyclesRemaining:"{n} ciklus van hátra", cycleDueNow:"Ciklusos szerviz esedékes",
     kitRecommended:"Javasolt karbantartás", createMaintenanceRecord:"A felhasznált alkatrészekkel együtt rögzítsen egy befejezett karbantartási eseményt is a javítás/szerviz előzményekben.",
-    noAutomaticKit:"Nincs automatikus készlet", scheduledKit:"Ütemezett szervizkészlet", cassetteUnknown:"A kazetták száma nincs megadva — a tömítés darabszámát ellenőrizni kell.",
+    noAutomaticKit:"Nincs karbantartási alkatrész", scheduledKit:"Karbantartási csomag", cassetteUnknown:"A kazetták száma nincs megadva — a tömítés darabszámát ellenőrizni kell.",
+    automaticRecommended:"Automatikus / javasolt", automaticKit:"Automatikus — következő váltakozó készlet",
+    routineKitLabel:"KIT3 — váltakozó karbantartási készlet", annualKitLabel:"KIT4 — váltakozó karbantartási készlet",
+    kit4IncludesRoutine:"A KIT4 a nagyobb váltakozó karbantartási csomag; KIT4 után a következő ütemezett készlet KIT3.",
+    recommendedNow:"Javasolt karbantartás", nextMaintenance:"Következő karbantartás", annualMaintenance:"", dueReasonDate:"6 havi időintervallum", dueReasonCycles:"500 ciklus", dueReasonAnnual:"",
+    nextMaintenanceKit:"Következő karbantartási készlet", autoFromHistory:"Automatikus az előzményekből", lastMaintenance:"Utolsó karbantartás", nextMaintenanceDue:"Következő karbantartás esedékes",
     identification:"Azonosítás", locationContacts:"Helyszín és kapcsolatok", technicalData:"Műszaki adatok",
     notesLegacy:"Megjegyzések és régi adatok", legacyNotes:"Importált / régi megjegyzések",
     asset:"Leltárszám / eszközszám", assetShort:"Leltár / eszköz", customerIdentifier:"Azonosító / szállítólevélszám", hospitalOrderNo:"Kórházi megrendelésszám", naturasoftNo:"NaturaSoft szám",
@@ -1039,7 +1062,7 @@ const I18N = {
     last6:"Utolsó 6 havi felülvizsgálat", next6:"Következő 6 havi esedékesség", last12:"Utolsó 12 havi felülvizsgálat", next12:"Következő 12 havi esedékesség",
     calc6:"Következő 6 havi számítása", calc12:"Következő 12 havi számítása", record:"Rekord", archiveUnit:"Berendezés archiválása",
     archiveHelp:"Az előzményeket megtartja, de az alapértelmezett aktív listából elrejti.", deleteUnit:"Berendezés törlése", cancel:"Mégse", saveChanges:"Változtatások mentése",
-    completedCheckHelp:"A karbantartás rögzítése automatikusan frissíti az esedékességeket. STATIM 5000S / G4 esetén a 6 havi szerviz +500 ciklusnál is esedékes, amelyik előbb bekövetkezik; a SERVICE-KIT-3 / SERVICE-KIT-4 automatikusan javasolt.",
+    completedCheckHelp:"Normál használatnál válaszd az Automatikus / javasolt lehetőséget. Minden elvégzett karbantartás ugyanazt a 6 havi / 500 ciklusos ütemezést lépteti tovább, és a következő készlet automatikusan vált: KIT3 → KIT4 vagy KIT4 → KIT3.",
     recordCompleted:"+ Elvégzett felülvizsgálat rögzítése", checkHistory:"Felülvizsgálati előzmények", addRepair:"+ Javítás / hiba felvétele", repairHistory:"Javítási előzmények",
     addPhotos:"Fotók hozzáadása", photoHelp:"Kattints vagy húzd ide a képeket. A képek max. 1600 px-re lesznek átméretezve és tömörítve, majd a JSON-ba ágyazva mentődnek.",
     storedPhotosTitle:"Tárolt fotók", date:"Dátum", type:"Típus", detailsCol:"Részletek", techStatus:"Technikus / állapot",
@@ -1114,9 +1137,74 @@ function effectiveMaintenanceProfile(u){
 function isSType(u){
   return String(u?.type||u?.model||"").toUpperCase().includes("5000S");
 }
+function oppositeMaintenanceKit(code){
+  return code==="SERVICE-KIT-4" ? "SERVICE-KIT-3" : "SERVICE-KIT-4";
+}
+function datedMaintenanceHistory(u){
+  const rows=[];
+  (u?.checkups||[]).forEach(c=>{
+    if(c.serviceKit==="SERVICE-KIT-3"||c.serviceKit==="SERVICE-KIT-4")
+      rows.push({kit:c.serviceKit,date:c.date||"",at:c.createdAt||""});
+  });
+  (u?.repairs||[]).forEach(r=>{
+    if(r.serviceKit==="SERVICE-KIT-3"||r.serviceKit==="SERVICE-KIT-4")
+      rows.push({kit:r.serviceKit,date:r.completedDate||r.date||"",at:r.updatedAt||""});
+  });
+  return rows.sort((a,b)=>{
+    const ad=a.date||a.at||"", bd=b.date||b.at||"";
+    return bd.localeCompare(ad);
+  });
+}
+function inferredNextMaintenanceKit(u){
+  if(u?.nextMaintenanceKit==="SERVICE-KIT-3"||u?.nextMaintenanceKit==="SERVICE-KIT-4")
+    return u.nextMaintenanceKit;
+
+  const hist=datedMaintenanceHistory(u);
+  if(hist.length)return oppositeMaintenanceKit(hist[0].kit);
+
+  // Legacy fallback: infer only when old 6/12 dates give a clear latest service.
+  const sixLast=u?.schedules?.six?.last||"";
+  const twelveLast=u?.schedules?.twelve?.last||"";
+  if(sixLast||twelveLast){
+    if(twelveLast && (!sixLast || twelveLast>=sixLast))return "SERVICE-KIT-3";
+    if(sixLast)return "SERVICE-KIT-4";
+  }
+  return "SERVICE-KIT-3";
+}
 function serviceKitFor(u,type){
   if(effectiveMaintenanceProfile(u)!=="statim5000sg4") return "";
-  return String(type)==="6" ? "SERVICE-KIT-3" : String(type)==="12" ? "SERVICE-KIT-4" : "";
+  return inferredNextMaintenanceKit(u);
+}
+function maintenanceRecommendation(u,asOfDate=todayISO(),cycleValue=null){
+  if(!u || effectiveMaintenanceProfile(u)!=="statim5000sg4")
+    return {type:"6",kit:"",reason:"",nextDate:"",cycleDue:false};
+
+  fillAutomaticDueDates(u);
+  const six=u.schedules?.six||{};
+  const asOf=asOfDate||todayISO();
+  const nextDate=six.enabled?(six.next||""):"";
+  const currentCycle=cycleValue==null||cycleValue===""?(u.cycleCount===""?null:Number(u.cycleCount)):Number(cycleValue);
+  const nextCycle=six.nextCycle===""||six.nextCycle==null?null:Number(six.nextCycle);
+  const cycleDue=currentCycle!=null && nextCycle!=null && currentCycle>=nextCycle;
+  const dateDue=!!nextDate && nextDate<=asOf;
+  return {
+    type:"6",
+    kit:inferredNextMaintenanceKit(u),
+    reason:cycleDue?"cycles":"date",
+    nextDate,
+    cycleDue,
+    dateDue
+  };
+}
+function resolvedCheckType(u){
+  if(effectiveMaintenanceProfile(u)==="statim5000sg4")return "6";
+  const raw=$("#cType")?.value||"6";
+  return raw==="12"?"12":"6";
+}
+function resolvedServiceKit(u){
+  const raw=$("#cServiceKit")?.value||"AUTO";
+  if(raw!=="AUTO")return raw;
+  return maintenanceRecommendation(u,$("#cDate")?.value||todayISO(),$("#cCycleCount")?.value).kit;
 }
 function serviceKitByCode(code){
   return (db.serviceKits||[]).find(k=>k.code===code)||null;
@@ -1145,7 +1233,7 @@ function fillAutomaticDueDates(u){
   if(u.installed){
     if(u.schedules.six.enabled && !u.schedules.six.last && !u.schedules.six.next)
       u.schedules.six.next=addMonths(u.installed,6);
-    if(u.schedules.twelve.enabled && !u.schedules.twelve.last && !u.schedules.twelve.next)
+    if(effectiveMaintenanceProfile(u)!=="statim5000sg4" && u.schedules.twelve.enabled && !u.schedules.twelve.last && !u.schedules.twelve.next)
       u.schedules.twelve.next=addMonths(u.installed,12);
   }
   if(effectiveMaintenanceProfile(u)==="statim5000sg4" && u.schedules.six.enabled){
@@ -1191,16 +1279,16 @@ function scheduleEntries(u){
   const smart=effectiveMaintenanceProfile(u)==="statim5000sg4";
   if(u.schedules?.six?.enabled) arr.push({
     type:"6",
-    label:smart?(currentLang==="hu"?"6 hónap / 500 ciklus":"6 months / 500 cycles"):(currentLang==="hu"?"6 havi":"6 month"),
+    label:smart?t("nextMaintenance"):(currentLang==="hu"?"6 havi":"6 month"),
     next:u.schedules.six.next||"",last:u.schedules.six.last||"",
     lastCycle:u.schedules.six.lastCycle??"",nextCycle:u.schedules.six.nextCycle??"",
-    kit:serviceKitFor(u,"6")
+    kit:smart?inferredNextMaintenanceKit(u):""
   });
-  if(u.schedules?.twelve?.enabled) arr.push({
+  if(!smart && u.schedules?.twelve?.enabled) arr.push({
     type:"12",
-    label:smart?(currentLang==="hu"?"Éves technikusi karbantartás":"Annual technician maintenance"):(currentLang==="hu"?"12 havi":"12 month"),
+    label:currentLang==="hu"?"12 havi":"12 month",
     next:u.schedules.twelve.next||"",last:u.schedules.twelve.last||"",
-    kit:serviceKitFor(u,"12")
+    kit:""
   });
   return arr;
 }
@@ -1400,6 +1488,10 @@ function applyLanguage(){
   $("#lblAccessories").textContent=L("accessories");
   $("#lblCassetteCount").textContent=L("cassetteCount");
   $("#lblMaintenanceProfile").textContent=L("maintenanceProfile");
+  $("#lblNextMaintenanceKit").textContent=L("nextMaintenanceKit");
+  $("#fNextMaintenanceKit").options[0].text=L("autoFromHistory");
+  $("#fNextMaintenanceKit").options[1].text="KIT3";
+  $("#fNextMaintenanceKit").options[2].text="KIT4";
   $("#fMaintenanceProfile").options[0].text=L("profileAuto");
   $("#fMaintenanceProfile").options[1].text=L("profile5000");
   $("#fMaintenanceProfile").options[2].text=L("profileCalendar");
@@ -1417,11 +1509,11 @@ function applyLanguage(){
   const statusOpts=$("#fStatus").options;
   [L("statusActive"),L("statusLoaner"),L("statusOut"),L("statusScrapped"),L("statusUnknown")].forEach((x,i)=>statusOpts[i].text=x);
   const smartNow=effectiveMaintenanceProfile({type:$("#fType").value,maintenanceProfile:$("#fMaintenanceProfile").value})==="statim5000sg4";
-  detailPage.querySelectorAll(".checkrow b")[0].textContent=smartNow?(currentLang==="hu"?"6 hónap / 500 ciklus":"6 months / 500 cycles"):L("sixCheck");
-  detailPage.querySelectorAll(".checkrow .sub")[0].textContent=smartNow?(currentLang==="hu"?"SERVICE-KIT-3; amelyik előbb bekövetkezik: 6 hónap vagy +500 ciklus.":"SERVICE-KIT-3; whichever comes first: 6 months or +500 cycles."):L("sixHelp");
-  detailPage.querySelectorAll(".checkrow b")[1].textContent=smartNow?(currentLang==="hu"?"Éves technikusi karbantartás":"Annual technician maintenance"):L("twelveCheck");
-  detailPage.querySelectorAll(".checkrow .sub")[1].textContent=smartNow?(currentLang==="hu"?"SERVICE-KIT-4 éves karbantartás.":"Annual SERVICE-KIT-4 maintenance."):L("twelveHelp");
-  $("#calc6").textContent=L("calc6"); $("#calc12").textContent=L("calc12");
+  detailPage.querySelectorAll(".checkrow b")[0].textContent=smartNow?(currentLang==="hu"?"Karbantartási ciklus":"Maintenance cycle"):L("sixCheck");
+  detailPage.querySelectorAll(".checkrow .sub")[0].textContent=smartNow?(currentLang==="hu"?"6 hónap vagy +500 ciklus, amelyik előbb bekövetkezik. A KIT3 és KIT4 automatikusan váltakozik.":"Every 6 months or +500 cycles, whichever comes first. KIT3 and KIT4 alternate automatically."):L("sixHelp");
+  detailPage.querySelectorAll(".checkrow b")[1].textContent=L("twelveCheck");
+  detailPage.querySelectorAll(".checkrow .sub")[1].textContent=L("twelveHelp");
+  $("#calc6").textContent=smartNow?(currentLang==="hu"?"Következő +6 hónap számítása":"Calculate next +6 months"):L("calc6"); $("#calc12").textContent=L("calc12");
   detailPage.querySelectorAll(".checkrow b")[2].textContent=L("archiveUnit");
   detailPage.querySelectorAll(".checkrow .sub")[2].textContent=" "+L("archiveHelp");
   $("#deleteUnitBtn").textContent=L("deleteUnit");
@@ -1438,7 +1530,13 @@ function applyLanguage(){
   $("#checkModal h2").textContent=L("recordCompletedTitle");
   const cl=$("#checkModal").querySelectorAll(".field label");
   [L("checkupType"),L("checkDate"),L("checkCycles"),L("result"),L("technician"),L("jobNo"),L("nextDueOverride"),L("workPerformed"),L("scheduledKit")].forEach((x,i)=>{if(cl[i])cl[i].textContent=x});
-  $("#cServiceKit").options[0].text=L("noAutomaticKit");
+  $("#cType").options[0].text=L("automaticRecommended");
+  $("#cType").options[1].text=currentLang==="hu"?"6 havi":"6 month";
+  $("#cType").options[2].text=currentLang==="hu"?"12 havi":"12 month";
+  $("#cServiceKit").options[0].text=L("automaticKit");
+  $("#cServiceKit").options[1].text=L("routineKitLabel");
+  $("#cServiceKit").options[2].text=L("annualKitLabel");
+  $("#cServiceKit").options[3].text=L("noAutomaticKit");
   $("#maintenanceKitTitle").textContent=L("kitRecommended");
   $("#createMaintenanceRecordText").textContent=L("createMaintenanceRecord");
   $("#saveCheckBtn").textContent=L("saveCheckup");
@@ -1728,10 +1826,22 @@ function cardMilestones(u){
 }
 function cardHTML(u){
   const cls=unitSeverity(u), repairs=openRepairs(u);
-  const schedule=scheduleEntries(u).map(e=>{
-    const sev=entrySeverity(u,e),kit=e.kit?` · ${esc(e.kit)}`:"",dateText=e.next?fmt(e.next):t("noDueDate");
-    return `<div class="due-line"><span><b>${e.label}</b>${kit}<br><span class="sub">${dateText}${e.nextCycle!==""&&e.nextCycle!=null?` · ${currentLang==="hu"?"ciklus":"cycle"} ${new Intl.NumberFormat('hu-HU').format(Number(e.nextCycle))}`:""}</span></span><span class="badge ${sev}">${entryDueText(u,e)}</span></div>`;
-  }).join("");
+  let schedule="";
+  if(effectiveMaintenanceProfile(u)==="statim5000sg4"){
+    const rec=maintenanceRecommendation(u);
+    const entry=scheduleEntries(u)[0];
+    const sev=entry?entrySeverity(u,entry):"none";
+    const reason=rec.reason==="cycles"?t("dueReasonCycles"):t("dueReasonDate");
+    const dateText=rec.nextDate?fmt(rec.nextDate):t("noDueDate");
+    const cycleInfo=entry?.nextCycle!==""&&entry?.nextCycle!=null
+      ?` · ${currentLang==="hu"?"ciklus":"cycle"} ${new Intl.NumberFormat("hu-HU").format(Number(entry.nextCycle))}`:"";
+    schedule=`<div class="due-line"><span><b>${t("nextMaintenance")}: ${esc(rec.kit||"—")}</b><br><span class="sub">${dateText}${cycleInfo} · ${esc(reason)}</span></span><span class="badge ${sev}">${entry?entryDueText(u,entry):t("noDueDate")}</span></div>`;
+  }else{
+    schedule=scheduleEntries(u).map(e=>{
+      const sev=entrySeverity(u,e),dateText=e.next?fmt(e.next):t("noDueDate");
+      return `<div class="due-line"><span><b>${e.label}</b><br><span class="sub">${dateText}</span></span><span class="badge ${sev}">${entryDueText(u,e)}</span></div>`;
+    }).join("");
+  }
   const status=u.status||"Active",wf=u.workflowStatus||"";
   const delivery=[u.mediolaDeliveryNo,u.mediolaDeliveryDate?fmt(u.mediolaDeliveryDate):""].filter(Boolean).join(" · ");
   const invoice=[u.mediolaInvoiceNo,u.mediolaInvoiceDate?fmt(u.mediolaInvoiceDate):""].filter(Boolean).join(" · ");
@@ -1768,7 +1878,7 @@ function defaultUnit(){
     hospital:"",department:"",location:"",serial:"",assetNo:"",customerIdentifierNo:"",hospitalOrderNo:"",naturasoftNo:"",
     mediolaDeliveryNo:"",mediolaDeliveryDate:"",mediolaInvoiceNo:"",mediolaInvoiceDate:"",repairLocation:"",
     workflowStatus:"",workflowHistory:[],workflowMilestones:{repairCompleted:"",pricingCompleted:"",quoteSent:"",orderReceived:"",shipped:"",invoiced:""},
-    manufactured:"",installed:"",cycleCount:"",cycleCountDate:"",software:"",interfaceFirmware:"",accessories:"",cassetteCount:"",maintenanceProfile:"auto",contact:"",contactInfo:"",technician:"",tag:"",notes:"",legacyNotes:"",archived:false,
+    manufactured:"",installed:"",cycleCount:"",cycleCountDate:"",software:"",interfaceFirmware:"",accessories:"",cassetteCount:"",maintenanceProfile:"auto",nextMaintenanceKit:"",contact:"",contactInfo:"",technician:"",tag:"",notes:"",legacyNotes:"",archived:false,
     schedules:{six:{enabled:true,last:"",next:"",lastCycle:"",nextCycle:""},twelve:{enabled:true,last:"",next:""}},checkups:[],repairs:[],photos:[],createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};
 }
 function newUnit(){editingId=null; fillUnit(defaultUnit()); $("#deleteUnitBtn").style.display="none"; openModal("unitModal")}
@@ -1791,6 +1901,7 @@ function fillUnit(u){
   $("#fCycleCount").value=u.cycleCount??"";$("#fCycleCountDate").value=u.cycleCountDate||"";
   $("#fSoftware").value=u.software||"";$("#fInterfaceFirmware").value=u.interfaceFirmware||"";$("#fAccessories").value=u.accessories||"";
   $("#fCassetteCount").value=u.cassetteCount??"";$("#fMaintenanceProfile").value=u.maintenanceProfile||"auto";
+  $("#fNextMaintenanceKit").value=u.nextMaintenanceKit||"";
   $("#fNotes").value=u.notes||"";$("#fLegacyNotes").value=u.legacyNotes||"";
   $("#fArchived").checked=!!u.archived;
   $("#fSixEnabled").checked=u.schedules?.six?.enabled!==false;$("#fSixLast").value=u.schedules?.six?.last||"";$("#fSixNext").value=u.schedules?.six?.next||"";
@@ -1812,6 +1923,7 @@ function readUnitForm(base){
   base.cycleCount=$("#fCycleCount").value===""?"":Math.max(0,Number($("#fCycleCount").value)||0);base.cycleCountDate=$("#fCycleCountDate").value;
   base.software=$("#fSoftware").value.trim();base.interfaceFirmware=$("#fInterfaceFirmware").value.trim();base.accessories=$("#fAccessories").value.trim();
   base.cassetteCount=$("#fCassetteCount").value===""?"":Math.max(0,Math.floor(Number($("#fCassetteCount").value)||0));base.maintenanceProfile=$("#fMaintenanceProfile").value||"auto";
+  base.nextMaintenanceKit=$("#fNextMaintenanceKit").value||"";
   base.notes=$("#fNotes").value.trim();base.legacyNotes=$("#fLegacyNotes").value.trim();base.archived=$("#fArchived").checked;
   base.schedules=base.schedules||{};
   base.schedules.six={enabled:$("#fSixEnabled").checked,last:$("#fSixLast").value,next:$("#fSixNext").value,
@@ -1863,7 +1975,8 @@ $("#fInstalled").addEventListener("change",()=>{
   const d=$("#fInstalled").value;
   if(!d)return;
   if(!$("#fSixLast").value)$("#fSixNext").value=addMonths(d,6);
-  if(!$("#fTwelveLast").value)$("#fTwelveNext").value=addMonths(d,12);
+  const smart=effectiveMaintenanceProfile(formProfileUnit())==="statim5000sg4";
+  if(!smart && !$("#fTwelveLast").value)$("#fTwelveNext").value=addMonths(d,12);
 });
 
 function formProfileUnit(){
@@ -1876,14 +1989,24 @@ function updateProfileUI(){
   $("#fSixLastCycle").disabled=!smart;$("#fSixNextCycle").disabled=!smart;
   if(smart && $("#fSixLastCycle").value!=="" && $("#fSixNextCycle").value==="")
     $("#fSixNextCycle").value=(Number($("#fSixLastCycle").value)||0)+500;
+
+  $("#nextMaintenanceKitField").style.display=smart?"":"none";
+  $("#fTwelveEnabled").closest(".checkrow").style.display=smart?"none":"";
+  $("#fTwelveLast").parentElement.style.display=smart?"none":"";
+  $("#fTwelveNext").parentElement.style.display=smart?"none":"";
+  $("#calc12").style.display=smart?"none":"";
+
   const detailPage=$('[data-page="details"]');
   if(detailPage){
     const bs=detailPage.querySelectorAll(".checkrow b"), subs=detailPage.querySelectorAll(".checkrow .sub");
-    if(bs[0])bs[0].textContent=smart?(currentLang==="hu"?"6 hónap / 500 ciklus":"6 months / 500 cycles"):t("sixCheck");
-    if(subs[0])subs[0].textContent=smart?(currentLang==="hu"?"SERVICE-KIT-3; 6 hónap vagy +500 ciklus, amelyik előbb bekövetkezik.":"SERVICE-KIT-3; 6 months or +500 cycles, whichever comes first."):t("sixHelp");
-    if(bs[1])bs[1].textContent=smart?(currentLang==="hu"?"Éves technikusi karbantartás":"Annual technician maintenance"):t("twelveCheck");
-    if(subs[1])subs[1].textContent=smart?(currentLang==="hu"?"SERVICE-KIT-4 éves karbantartás.":"Annual SERVICE-KIT-4 maintenance."):t("twelveHelp");
+    if(bs[0])bs[0].textContent=smart?(currentLang==="hu"?"Karbantartási ciklus":"Maintenance cycle"):t("sixCheck");
+    if(subs[0])subs[0].textContent=smart?(currentLang==="hu"?"6 hónap vagy +500 ciklus, amelyik előbb bekövetkezik. A KIT3 és KIT4 automatikusan váltakozik.":"Every 6 months or +500 cycles, whichever comes first. KIT3 and KIT4 alternate automatically."):t("sixHelp");
+    if(bs[1])bs[1].textContent=t("twelveCheck");
+    if(subs[1])subs[1].textContent=t("twelveHelp");
   }
+  $("#lblLast6").textContent=smart?t("lastMaintenance"):t("last6");
+  $("#lblNext6").textContent=smart?t("nextMaintenanceDue"):t("next6");
+  $("#calc6").textContent=smart?(currentLang==="hu"?"Következő +6 hónap számítása":"Calculate next +6 months"):t("calc6");
 }
 $("#fType").addEventListener("input",updateProfileUI);
 $("#fMaintenanceProfile").addEventListener("change",updateProfileUI);
@@ -1900,10 +2023,18 @@ $$("#tabs .tab").forEach(t=>t.onclick=()=>switchTab(t.dataset.tab));
 function quickCheck(id){editUnit(id); openCheckModal()}
 $("#addCheckBtn").onclick=openCheckModal;
 function maintenanceKitText(u,code){
-  if(!code) return currentLang==="hu"?"Ehhez a profilhoz nincs automatikus szervizkészlet.":"No automatic service kit is assigned to this profile.";
-  const components=kitComponentsFor(u,code);
-  const kit=serviceKitByCode(code);
-  let html=`<b>${esc(code)}</b>${kit?.label?` · ${esc(kit.label)}`:""}<div class="maintenance-components">`;
+  const resolved=code==="AUTO"?resolvedServiceKit(u):code;
+  if(!resolved) return currentLang==="hu"?"Ehhez a bejegyzéshez nincs karbantartási alkatrész kiválasztva.":"No maintenance parts are selected for this entry.";
+  const components=kitComponentsFor(u,resolved);
+  const kit=serviceKitByCode(resolved);
+  const rec=maintenanceRecommendation(u,$("#cDate")?.value||todayISO(),$("#cCycleCount")?.value);
+  let html=`<b>${t("recommendedNow")}: ${esc(resolved)}</b>${kit?.label?` · ${esc(kit.label)}`:""}`;
+  if(resolved==="SERVICE-KIT-4")html+=`<div class="sub" style="margin-top:4px">${t("kit4IncludesRoutine")}</div>`;
+  if(code==="AUTO"){
+    const reason=rec.reason==="cycles"?t("dueReasonCycles"):t("dueReasonDate");
+    html+=`<div class="sub">${currentLang==="hu"?"Automatikus választás oka":"Automatic reason"}: ${esc(reason)}</div>`;
+  }
+  html+=`<div class="maintenance-components">`;
   html+=components.map(p=>`${esc(p.partNo)} — ${esc(p.name)}${p.qty!==1?` × ${p.qty}`:""}`).join("<br>");
   if(components.some(p=>p.partNo==="01-104706S"))
     html+=`<br><span class="sub">${currentLang==="hu"?"01-104706S csak „S” készülékhez.":"01-104706S is included only for “S” units."}</span>`;
@@ -1914,23 +2045,38 @@ function maintenanceKitText(u,code){
 }
 function updateMaintenanceKitUI(autoSelect=false){
   const u=currentUnit(); if(!u||!$("#cServiceKit"))return;
-  if(autoSelect)$("#cServiceKit").value=serviceKitFor(u,$("#cType").value);
+  if(autoSelect)$("#cServiceKit").value="AUTO";
+  const smart=effectiveMaintenanceProfile(u)==="statim5000sg4";
+  const type=resolvedCheckType(u);
+  if($("#cType").value==="auto")$("#cNext").value=addMonths($("#cDate").value||todayISO(),smart?6:Number(type));
   $("#maintenanceKitDetails").innerHTML=maintenanceKitText(u,$("#cServiceKit").value);
 }
 function openCheckModal(){
   const u=currentUnit(); if(!u){alert(currentLang==="hu"?"Előbb mentsd el a berendezést.":"Save the unit first.");return}
-  $("#cType").value="6";$("#cDate").value=todayISO();$("#cCycleCount").value=u.cycleCount??"";$("#cResult").value="Passed";$("#cTech").value=u.technician||"";
-  $("#cJob").value="";$("#cNotes").value="";$("#cNext").value=addMonths(todayISO(),6);
+  $("#cType").value="auto";$("#cDate").value=todayISO();$("#cCycleCount").value=u.cycleCount??"";$("#cResult").value="Passed";$("#cTech").value=u.technician||"";
+  $("#cJob").value="";$("#cNotes").value="";
+  const rec=maintenanceRecommendation(u,todayISO(),u.cycleCount);
+  $("#cNext").value=addMonths(todayISO(),6);
   $("#cCreateMaintenanceRecord").checked=true;
-  $("#cServiceKit").value=serviceKitFor(u,"6");
+  $("#cServiceKit").value="AUTO";
   updateMaintenanceKitUI(false);
   openModal("checkModal");
 }
 $("#cType").onchange=()=>{
-  $("#cNext").value=addMonths($("#cDate").value,Number($("#cType").value));
+  const u=currentUnit();if(!u)return;
+  const smart=effectiveMaintenanceProfile(u)==="statim5000sg4";
+  const type=resolvedCheckType(u);
+  $("#cNext").value=addMonths($("#cDate").value||todayISO(),smart?6:Number(type));
   updateMaintenanceKitUI(true);
 };
-$("#cDate").onchange=()=>$("#cNext").value=addMonths($("#cDate").value,Number($("#cType").value));
+$("#cDate").onchange=()=>{
+  const u=currentUnit();if(!u)return;
+  const smart=effectiveMaintenanceProfile(u)==="statim5000sg4";
+  const type=resolvedCheckType(u);
+  $("#cNext").value=addMonths($("#cDate").value||todayISO(),smart?6:Number(type));
+  updateMaintenanceKitUI(false);
+};
+$("#cCycleCount").oninput=()=>{if($("#cType").value==="auto"&&$("#cServiceKit").value==="AUTO")updateMaintenanceKitUI(false)};
 $("#cServiceKit").onchange=()=>updateMaintenanceKitUI(false);
 
 function createMaintenanceHistoryFromCheck(u,c){
@@ -1951,29 +2097,35 @@ function createMaintenanceHistoryFromCheck(u,c){
 }
 $("#saveCheckBtn").onclick=()=>{
   const u=currentUnit(); if(!u)return;
-  const type=$("#cType").value,date=$("#cDate").value;if(!date){alert(currentLang==="hu"?"A felülvizsgálat dátuma kötelező.":"Checkup date is required.");return}
+  const date=$("#cDate").value;if(!date){alert(currentLang==="hu"?"A felülvizsgálat dátuma kötelező.":"Checkup date is required.");return}
+  const type=resolvedCheckType(u);
   const cycleRaw=$("#cCycleCount").value;
+  const actualKit=resolvedServiceKit(u);
   const c={id:uid("check"),type,date,cycleCount:cycleRaw===""?"":Math.max(0,Number(cycleRaw)||0),result:$("#cResult").value,technician:$("#cTech").value.trim(),
-    jobNo:$("#cJob").value.trim(),notes:$("#cNotes").value.trim(),serviceKit:$("#cServiceKit").value,maintenanceComponents:[],createdAt:new Date().toISOString()};
+    jobNo:$("#cJob").value.trim(),notes:$("#cNotes").value.trim(),serviceKit:actualKit,maintenanceComponents:[],createdAt:new Date().toISOString()};
   c.maintenanceComponents=c.serviceKit?kitComponentsFor(u,c.serviceKit).map(p=>({name:p.name,partNo:p.partNo,qty:p.qty})):[];
   u.checkups=u.checkups||[];u.checkups.push(c);
   if(c.cycleCount!==""){u.cycleCount=c.cycleCount;u.cycleCountDate=date}
 
   const smart=effectiveMaintenanceProfile(u)==="statim5000sg4";
-  if(type==="6"){
-    u.schedules.six.enabled=true;u.schedules.six.last=date;u.schedules.six.next=$("#cNext").value||addMonths(date,6);
-    if(smart){
-      if(c.cycleCount!==""){u.schedules.six.lastCycle=c.cycleCount;u.schedules.six.nextCycle=c.cycleCount+500}
-      else {u.schedules.six.lastCycle="";u.schedules.six.nextCycle=""}
+  if(smart){
+    // One repeating maintenance schedule. KIT3 and KIT4 alternate after every completed service.
+    u.schedules.six.enabled=true;
+    u.schedules.six.last=date;
+    u.schedules.six.next=$("#cNext").value||addMonths(date,6);
+    if(c.cycleCount!==""){
+      u.schedules.six.lastCycle=c.cycleCount;
+      u.schedules.six.nextCycle=c.cycleCount+500;
+    }else{
+      u.schedules.six.lastCycle="";
+      u.schedules.six.nextCycle="";
     }
+    if(c.serviceKit==="SERVICE-KIT-3"||c.serviceKit==="SERVICE-KIT-4")
+      u.nextMaintenanceKit=oppositeMaintenanceKit(c.serviceKit);
+  }else if(type==="6"){
+    u.schedules.six.enabled=true;u.schedules.six.last=date;u.schedules.six.next=$("#cNext").value||addMonths(date,6);
   }else{
     u.schedules.twelve.enabled=true;u.schedules.twelve.last=date;u.schedules.twelve.next=$("#cNext").value||addMonths(date,12);
-    if(smart){
-      // SERVICE-KIT-4 contains the routine 6-month service items, so annual maintenance restarts that schedule too.
-      u.schedules.six.enabled=true;u.schedules.six.last=date;u.schedules.six.next=addMonths(date,6);
-      if(c.cycleCount!==""){u.schedules.six.lastCycle=c.cycleCount;u.schedules.six.nextCycle=c.cycleCount+500}
-      else {u.schedules.six.lastCycle="";u.schedules.six.nextCycle=""}
-    }
   }
   createMaintenanceHistoryFromCheck(u,c);
   u.updatedAt=new Date().toISOString();changed();fillUnit(u);switchTab("checkups");closeModal("checkModal");
@@ -1987,7 +2139,7 @@ function deleteCheck(id){
 function renderChecks(u){
   const x=(u.checkups||[]).slice().sort((a,b)=>b.date.localeCompare(a.date));
   $("#checkHistory").innerHTML=x.length?x.map(c=>`<div class="history-item">
-    <div class="history-top"><strong>${fmt(c.date)} · ${c.type} ${currentLang==="hu"?"havi felülvizsgálat":"month checkup"}${c.serviceKit?` · ${esc(c.serviceKit)}`:""}</strong><span class="badge ${c.result==="Failed"?"overdue":c.result==="Repair required"?"due":"ok"}">${esc(c.result)}</span></div>
+    <div class="history-top"><strong>${fmt(c.date)} · ${(c.serviceKit==="SERVICE-KIT-3"||c.serviceKit==="SERVICE-KIT-4")?(currentLang==="hu"?"Karbantartás":"Maintenance"):(c.type==="12"?(currentLang==="hu"?"12 havi felülvizsgálat":"12 month checkup"):(currentLang==="hu"?"6 havi felülvizsgálat":"6 month checkup"))}${c.serviceKit?` · ${esc(c.serviceKit)}`:""}</strong><span class="badge ${c.result==="Failed"?"overdue":c.result==="Repair required"?"due":"ok"}">${esc(c.result)}</span></div>
     <div class="sub">${esc(c.technician||t("noTechnician"))}${c.jobNo?` · ${esc(c.jobNo)}`:""}${c.cycleCount!==""&&c.cycleCount!=null?` · ${t("checkCycles")}: ${new Intl.NumberFormat('hu-HU').format(Number(c.cycleCount))}`:""}</div>
     ${c.maintenanceComponents?.length?`<div class="history-body"><b>${currentLang==="hu"?"Szervizkészlet tartalma":"Kit contents"}:</b> ${c.maintenanceComponents.map(p=>`${esc(p.partNo)} ${esc(p.name)}${p.qty!==1?` × ${p.qty}`:""}`).join(", ")}</div>`:""}
     ${c.notes?`<div class="history-body">${esc(c.notes)}</div>`:""}
@@ -2245,7 +2397,7 @@ function renderPhotos(u){
 function renderTimeline(u){
   const rows=[],checkDates=new Set((u.checkups||[]).map(c=>c.date).filter(Boolean)),repairDates=new Set((u.repairs||[]).map(r=>r.completedDate||r.date).filter(Boolean));
   const sameDay=new Set([...checkDates].filter(d=>repairDates.has(d)));
-  (u.checkups||[]).forEach(c=>{const linked=!!c.linkedRepairId||sameDay.has(c.date);rows.push({date:c.date,sortAt:c.createdAt||c.date||"",kind:"checkup",linked,type:`${c.type} ${currentLang==="hu"?"havi felülvizsgálat":"month checkup"}`,details:[c.cycleCount!==""&&c.cycleCount!=null?`${t("checkCycles")}: ${c.cycleCount}`:"",c.notes||c.jobNo||c.result].filter(Boolean).join(" · "),who:[c.technician,c.result].filter(Boolean).join(" · ")})});
+  (u.checkups||[]).forEach(c=>{const linked=!!c.linkedRepairId||sameDay.has(c.date);rows.push({date:c.date,sortAt:c.createdAt||c.date||"",kind:"checkup",linked,type:(c.serviceKit==="SERVICE-KIT-3"||c.serviceKit==="SERVICE-KIT-4")?(currentLang==="hu"?"Karbantartás":"Maintenance"):(c.type==="12"?(currentLang==="hu"?"12 havi felülvizsgálat":"12 month checkup"):(currentLang==="hu"?"6 havi felülvizsgálat":"6 month checkup")),details:[c.cycleCount!==""&&c.cycleCount!=null?`${t("checkCycles")}: ${c.cycleCount}`:"",c.notes||c.jobNo||c.result].filter(Boolean).join(" · "),who:[c.technician,c.result].filter(Boolean).join(" · ")})});
   (u.repairs||[]).forEach(r=>{const d=r.completedDate||r.date,linked=!!r.sourceCheckId||sameDay.has(d);rows.push({date:d,sortAt:r.updatedAt||d||"",kind:"repair",linked,type:repairEventText(r.eventType||"Repair"),details:[r.repairLocation?repairLocationText(r.repairLocation):"",r.notes||r.parts||r.jobNo].filter(Boolean).join(" · "),who:[r.technician,repairStatusText(r.status)].filter(Boolean).join(" · ")})});
   (u.workflowHistory||[]).forEach(w=>rows.push({date:w.date,sortAt:w.at||w.date||"",kind:"status",linked:false,type:currentLang==="hu"?"Állapotváltozás":"Status change",details:`${w.from?workflowStatusText(w.from)+" → ":""}${workflowStatusText(w.status)}${w.note?` · ${w.note}`:""}`,who:w.by||""}));
   (u.photos||[]).forEach(p=>rows.push({date:(p.addedAt||"").slice(0,10),sortAt:p.addedAt||"",kind:"photo",linked:false,type:t("photo"),details:p.caption||p.name,who:""}));
@@ -3034,6 +3186,7 @@ function normalizeDB(){
     if(!u.unitId)u.unitId=allocLegacyId();if(!u.status)u.status="Active";if(!u.type)u.type=u.model||"";u.model=u.type;
     ["productNo","customerIdentifierNo","hospitalOrderNo","naturasoftNo","mediolaDeliveryNo","mediolaDeliveryDate","mediolaInvoiceNo","mediolaInvoiceDate","repairLocation","workflowStatus","manufactured","cycleCountDate","software","interfaceFirmware","accessories","legacyNotes"].forEach(k=>{if(u[k]==null)u[k]=""});
     if(u.cycleCount==null)u.cycleCount="";if(u.cassetteCount==null)u.cassetteCount=inferCassetteCount(u.accessories);if(u.maintenanceProfile==null)u.maintenanceProfile="auto";
+    if(u.nextMaintenanceKit==null)u.nextMaintenanceKit="";
     if(!Array.isArray(u.workflowHistory))u.workflowHistory=[];u.workflowHistory.forEach(w=>{w.id=w.id||uid("workflow");["date","from","status","note","by"].forEach(k=>{if(w[k]==null)w[k]=""})});
     u.workflowMilestones=u.workflowMilestones||{};["repairCompleted","pricingCompleted","quoteSent","orderReceived","shipped","invoiced"].forEach(k=>{if(u.workflowMilestones[k]==null)u.workflowMilestones[k]=""});
     const mm={repair_completed:"repairCompleted",pricing_completed:"pricingCompleted",quote_sent:"quoteSent",order_received:"orderReceived",shipped:"shipped",invoiced:"invoiced"};u.workflowHistory.forEach(w=>{const k=mm[w.status];if(k&&w.date&&!u.workflowMilestones[k])u.workflowMilestones[k]=w.date});if(u.mediolaDeliveryDate&&!u.workflowMilestones.shipped)u.workflowMilestones.shipped=u.mediolaDeliveryDate;if(u.mediolaInvoiceDate&&!u.workflowMilestones.invoiced)u.workflowMilestones.invoiced=u.mediolaInvoiceDate;
@@ -3041,6 +3194,8 @@ function normalizeDB(){
     u.checkups=u.checkups||[];u.repairs=u.repairs||[];u.photos=u.photos||[];u.checkups.forEach(c=>{if(c.cycleCount==null)c.cycleCount="";if(c.serviceKit==null)c.serviceKit="";if(c.maintenanceComponents==null)c.maintenanceComponents=[]});
     u.repairs.forEach(r=>{if(!r.eventType)r.eventType="Repair";if(r.repairLocation==null)r.repairLocation="";r.partsUsed=r.partsUsed||[];r.partsUsed.forEach(p=>{p.id=p.id||uid("usedpart");p.qty=Number(p.qty)||1;p.unitCost=Number(p.unitCost)||0;if(p.purchaseCost==null)p.purchaseCost="";if(p.listPrice==null)p.listPrice=""});r.servicesUsed=r.servicesUsed||[];r.servicesUsed.forEach(x=>{x.id=x.id||uid("usedservice");x.qty=Number(x.qty)||1;x.unitCost=Number(x.unitCost)||0;if(x.code==null)x.code="";if(x.unit==null)x.unit=""});if(r.laborHours==null)r.laborHours=0;if(r.hourlyRate==null)r.hourlyRate=0;if(r.otherCost==null)r.otherCost=0;if(r.costNote==null)r.costNote=""});
     fillAutomaticDueDates(u);
+    if(effectiveMaintenanceProfile(u)==="statim5000sg4" && !u.nextMaintenanceKit)
+      u.nextMaintenanceKit=inferredNextMaintenanceKit(u);
   });
   masterHospitals();
 }
@@ -3082,7 +3237,7 @@ async function fetchCloudRow(){
 }
 async function applyCloudRow(row){
   if(!row || !cloudPayloadLooksInitialized(row.data))return false;
-  const needsV13Migration=Number(row.data.version||0)<13||!Array.isArray(row.data.serviceCatalog)||!row.data.settings||Number(row.data.settings.hourlyRate||0)===0||(row.data.partsCatalog||[]).some(p=>p.listPrice===undefined)||(row.data.units||[]).some(u=>u.workflowHistory===undefined||u.hospitalOrderNo===undefined);
+  const needsV15Migration=Number(row.data.version||0)<15||!Array.isArray(row.data.serviceCatalog)||!row.data.settings||Number(row.data.settings.hourlyRate||0)===0||(row.data.partsCatalog||[]).some(p=>p.listPrice===undefined)||(row.data.units||[]).some(u=>u.workflowHistory===undefined||u.hospitalOrderNo===undefined||u.nextMaintenanceKit===undefined);
   suppressCloudSave=true;
   try{
     db=row.data;
@@ -3098,7 +3253,7 @@ async function applyCloudRow(row){
   }finally{
     suppressCloudSave=false;
   }
-  if(needsV13Migration && cloudReady)queueCloudSave();
+  if(needsV15Migration && cloudReady)queueCloudSave();
   return true;
 }
 async function loadCloudDatabase(){
