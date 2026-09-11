@@ -70,6 +70,11 @@
   .stats{display:grid;grid-template-columns:repeat(5,minmax(120px,1fr));gap:12px;margin-bottom:18px}
   .stat{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;box-shadow:0 5px 14px rgba(23,36,43,.04)}
   .stat .n{font-size:28px;font-weight:900;line-height:1}.stat .l{font-size:12px;color:var(--muted);margin-top:7px;font-weight:700}
+  .workflow-stats{margin-top:-7px}
+  .stat.workflow-stat{cursor:pointer;transition:.15s}
+  .stat.workflow-stat:hover{transform:translateY(-1px);box-shadow:0 9px 22px rgba(23,36,43,.09)}
+  .stat.workflow-stat.active{border-color:#78bfc6;background:#edf8f9}
+  .stat.workflow-stat .n{font-size:24px}
   .toolbar{display:flex;gap:10px;align-items:center;margin:8px 0 14px}
   .toolbar h2{font-size:18px;margin:0}.toolbar .count{font-size:12px;color:var(--muted)}
   .toolbar .spacer{flex:1}
@@ -190,6 +195,17 @@
   .maintenance-box strong{display:block;margin-bottom:5px}
   .maintenance-components{font-size:12px;line-height:1.55;color:#42545d;margin-top:6px}
   .cycle-due{font-weight:800}
+  .workflow-box{border:1px solid #cbdfe2;background:#f8fbfc;border-radius:13px;padding:12px}
+  .workflow-badge{font-weight:900;border-radius:999px;padding:5px 9px;font-size:11px;background:#eef3f5;color:#42545d;border:1px solid #d6e0e3}
+  .workflow-badge.wait{background:#fff5d9;color:#805b12;border-color:#ead79b}
+  .workflow-badge.progress{background:#e9f1ff;color:#315d9a;border-color:#c8d9f5}
+  .workflow-badge.done{background:#e3f4ea;color:#237048;border-color:#bddfc9}
+  .workflow-badge.shipped{background:#e7f6f6;color:#1f6d74;border-color:#b8dddd}
+  .milestones{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+  .milestone{font-size:10px;border-radius:999px;padding:4px 7px;background:#f3f6f7;border:1px solid #dde5e7;color:#53656c}
+  .timeline-linked td{background:#f2f7ff}
+  .timeline-status td{background:#fbfaf4}
+  .timeline-link-badge{display:inline-block;margin-left:6px;font-size:10px;font-weight:800;padding:2px 6px;border-radius:999px;background:#e6efff;color:#315d9a}
   @media(max-width:950px){
     .layout{grid-template-columns:1fr}aside{position:relative;top:0;height:auto;border-right:0;border-bottom:1px solid var(--line)}
     .stats{grid-template-columns:repeat(2,1fr)}.brand{min-width:0}.brand small{display:none}
@@ -322,6 +338,9 @@
   <div class="filter"><label>Repair status</label>
     <select id="repairFilter"><option value="">All</option><option value="open">Has open repair</option><option value="none">No open repair</option></select>
   </div>
+  <div class="filter"><label id="workflowFilterLabel">Workflow status</label>
+    <select id="workflowFilter"><option value="">All workflow statuses</option></select>
+  </div>
   <div class="filter"><label>Equipment status</label>
     <select id="unitStatusFilter">
       <option value="">All equipment statuses</option>
@@ -361,6 +380,13 @@
     <div class="stat"><div class="n" id="stat30">0</div><div class="l">Due ≤ 30 days</div></div>
     <div class="stat"><div class="n" id="statRepairs">0</div><div class="l">Open repairs</div></div>
     <div class="stat"><div class="n" id="statPhotos">0</div><div class="l">Stored photos</div></div>
+  </section>
+  <section class="stats workflow-stats" id="workflowStats">
+    <div class="stat workflow-stat" data-workflow-quick="waiting_repair"><div class="n" id="statWaitRepair">0</div><div class="l" id="statWaitRepairLabel">Waiting for repair</div></div>
+    <div class="stat workflow-stat" data-workflow-quick="repair_in_progress"><div class="n" id="statRepairProgress">0</div><div class="l" id="statRepairProgressLabel">Repair in progress</div></div>
+    <div class="stat workflow-stat" data-workflow-quick="waiting_pricing"><div class="n" id="statWaitPricing">0</div><div class="l" id="statWaitPricingLabel">Waiting for pricing</div></div>
+    <div class="stat workflow-stat" data-workflow-quick="waiting_quote"><div class="n" id="statWaitQuote">0</div><div class="l" id="statWaitQuoteLabel">Waiting for quotation</div></div>
+    <div class="stat workflow-stat" data-workflow-quick="waiting_order"><div class="n" id="statWaitOrder">0</div><div class="l" id="statWaitOrderLabel">Waiting for customer order</div></div>
   </section>
 
   <div class="toolbar">
@@ -421,7 +447,6 @@
           <div class="field"><label id="lblProductNo">Model / product no.</label><input id="fProductNo" list="statimProductList" placeholder="Choose or type..." /></div>
           <div class="field"><label id="lblSerial">Serial number *</label><input id="fSerial" /></div>
 
-          <div class="field"><label id="lblAsset">Asset / inventory no.</label><input id="fAsset" /></div>
           <div class="field"><label id="lblTag">Internal / legacy tag</label><input id="fTag" placeholder="e.g. STATIM-PTE-03" /></div>
         </div>
 
@@ -430,10 +455,50 @@
           <div class="field"><label id="lblHospital">Hospital *</label><select id="fHospital"><option value="">Choose hospital...</option></select></div>
           <div class="field"><label id="lblDepartment">Ward / department *</label><select id="fDepartment"><option value="">Choose ward...</option></select></div>
           <div class="field"><label id="lblRoom">Room / location</label><input id="fLocation" /></div>
+          <div class="field"><label id="lblAsset">Asset / inventory no.</label><input id="fAsset" /></div>
+          <div class="field"><label id="lblCustomerIdentifier">Identifier / delivery note no.</label><input id="fCustomerIdentifier" /></div>
           <div class="field"><label id="lblResponsible">Responsible contact</label><input id="fContact" /></div>
           <div class="field"><label id="lblPhoneEmail">Phone / email</label><input id="fContactInfo" /></div>
           <div class="field"><label id="lblTechnician">Mediola technician</label><input id="fTechnician" /></div>
         </div>
+
+        <div class="section-title" id="orderBillingTitle">Orders, delivery & invoicing</div>
+        <div class="grid3">
+          <div class="field"><label id="lblHospitalOrderNo">Hospital order no.</label><input id="fHospitalOrderNo" /></div>
+          <div class="field"><label id="lblNaturasoftNo">NaturaSoft no.</label><input id="fNaturasoftNo" /></div>
+          <div class="field"><label id="lblRepairLocation">Repair location</label>
+            <select id="fRepairLocation">
+              <option value="">Not specified</option><option value="On-site">On-site repair</option><option value="Workshop">Workshop repair</option>
+            </select>
+          </div>
+          <div class="field"><label id="lblDeliveryNo">Mediola delivery note no.</label><input id="fDeliveryNo" /></div>
+          <div class="field"><label id="lblDeliveryDate">Delivery date</label><input id="fDeliveryDate" type="date" /></div>
+          <div class="field"><label id="lblInvoiceNo">Mediola invoice no.</label><input id="fInvoiceNo" /></div>
+          <div class="field"><label id="lblInvoiceDate">Invoice date</label><input id="fInvoiceDate" type="date" /></div>
+        </div>
+
+        <div class="section-title" id="workflowTitle">Current workflow</div>
+        <div class="grid3">
+          <div class="field"><label id="lblWorkflowStatus">Workflow status</label>
+            <select id="fWorkflowStatus">
+              <option value="">No workflow status</option>
+              <option value="waiting_repair">Waiting for repair</option>
+              <option value="repair_in_progress">Repair in progress</option>
+              <option value="repair_completed">Repair completed</option>
+              <option value="waiting_pricing">Waiting for pricing</option>
+              <option value="pricing_completed">Pricing completed</option>
+              <option value="waiting_quote">Waiting for quotation</option>
+              <option value="quote_sent">Quotation sent</option>
+              <option value="waiting_order">Waiting for customer order</option>
+              <option value="order_received">Order received</option>
+              <option value="shipped">Shipped / delivered</option>
+              <option value="invoiced">Invoiced</option>
+            </select>
+          </div>
+          <div class="field"><label id="lblWorkflowDate">Status date</label><input id="fWorkflowDate" type="date" /></div>
+          <div class="field"><label id="lblWorkflowNote">Status note</label><input id="fWorkflowNote" placeholder="Optional" /></div>
+        </div>
+        <div class="workflow-box"><strong id="workflowHelpTitle">Flexible workflow</strong><div class="sub" id="workflowHelp">Statuses can be used in any order. Every change is saved to the timeline; only completed milestones receive dates on the card.</div></div>
 
         <div class="section-title" id="technicalTitle">Technical data</div>
         <div class="grid3">
@@ -568,6 +633,7 @@
       </div>
       <div class="field"><label>Reported / start date</label><input id="rDate" type="date" /></div>
       <div class="field"><label>Status</label><select id="rStatus"><option value="Open">Open</option><option value="Waiting for parts">Waiting for parts</option><option value="Sent out">Sent out</option><option value="Completed">Completed</option><option value="Cancelled">Cancelled</option></select></div>
+      <div class="field"><label id="repairLocationLabel">Repair location</label><select id="rRepairLocation"><option value="">Not specified</option><option value="On-site">On-site repair</option><option value="Workshop">Workshop repair</option></select></div>
       <div class="field"><label>Technician</label><input id="rTech" /></div>
       <div class="field"><label>Completed date</label><input id="rDone" type="date" /></div>
       <div class="field"><label>Job sheet / repair no.</label><input id="rJob" /></div>
@@ -583,6 +649,11 @@
             <div class="field" style="flex:1"><label id="qtyLabel">Qty</label><input id="rPartQty" type="number" min="0.01" step="1" value="1" /></div>
             <button class="btn brand" id="addRepairPartBtn" type="button" style="height:40px">+ Add</button>
           </div>
+        </div>
+        <div class="pillrow">
+          <button class="btn small ghost" id="addKit3PresetBtn" type="button">+ KIT3 preset</button>
+          <button class="btn small ghost" id="addKit4PresetBtn" type="button">+ KIT4 preset</button>
+          <span class="sub" id="kitPresetHelp">Presets add the individual component parts, not a KIT3/KIT4 line item.</span>
         </div>
         <div id="repairPartsTableWrap"></div>
         <div class="pillrow"><button class="btn small ghost" type="button" id="openPartsFromRepairBtn">Manage parts & labour</button></div>
@@ -661,7 +732,8 @@
       <div class="grid3">
         <div class="field"><label id="partNameLabel">Part name *</label><input id="catalogPartName" placeholder="e.g. Cassette seal" /></div>
         <div class="field"><label id="partNumberLabel">Part number</label><input id="catalogPartNo" placeholder="Optional" /></div>
-        <div class="field"><label id="unitCostLabel">Unit cost</label><input id="catalogPartCost" type="number" min="0" step="1" placeholder="HUF" /></div>
+        <div class="field"><label id="purchaseCostLabel">Purchase net price</label><input id="catalogPartCost" type="number" min="0" step="1" placeholder="HUF" /></div>
+        <div class="field"><label id="listPriceLabel">Net list price (optional)</label><input id="catalogPartListPrice" type="number" min="0" step="1" placeholder="HUF" /></div>
         <div class="field"><label id="partSupplierLabel">Supplier</label><input id="catalogPartSupplier" placeholder="Optional" /></div>
         <div class="field span2"><label id="partNotesLabel">Notes</label><input id="catalogPartNotes" placeholder="Compatibility / ordering notes" /></div>
         <label class="checkrow span3"><input id="catalogPartActive" type="checkbox" checked /><span><b id="partActiveLabel">Active / available</b><span class="sub" id="partActiveHelp"> Inactive parts stay in historical repairs but are hidden from new repair selection.</span></span></label>
@@ -782,13 +854,13 @@ let cloudSaveQueued = false;
 let cloudConflict = false;
 let suppressCloudSave = false;
 
-const APP_VERSION = 11;
+const APP_VERSION = 13;
 const blankDB = () => ({
   app:"Mediola STATIM Service Manager",
   version:APP_VERSION,
   databaseName:"Mediola STATIM database",
   exportedAt:null,
-  settings:{hourlyRate:0},
+  settings:{hourlyRate:19900},
   serviceKits:[
     {code:"SERVICE-KIT-3",label:"6 month / 500 cycle maintenance",components:[
       {partNo:"01-101649S",name:"Seal and Lubricant Kit",cassetteQty:true},
@@ -846,6 +918,7 @@ const I18N = {
     department:"Department", allDepartments:"All departments", checkupType:"Checkup type", bothCheckups:"6 & 12 month",
     due:"Due", all:"All", overdue:"Overdue", next30:"Due in next 30 days", next60:"Due in next 60 days", next90:"Due in next 90 days", noDue:"No due date",
     repairStatus:"Repair status", allRepairs:"All", hasOpenRepair:"Has open repair", noOpenRepair:"No open repair",
+    workflowFilter:"Workflow status", allWorkflowStatuses:"All workflow statuses",
     equipmentStatus:"Equipment status", allEquipmentStatuses:"All equipment statuses",
     statusActive:"Active", statusLoaner:"Loaner / replacement", statusOut:"Out of service", statusScrapped:"Scrapped", statusUnknown:"Unknown",
     recordStatus:"Record status", activeOnly:"Active only", activeArchived:"Active + archived", archivedOnly:"Archived only",
@@ -867,7 +940,16 @@ const I18N = {
     noAutomaticKit:"No automatic kit", scheduledKit:"Scheduled maintenance kit", cassetteUnknown:"Cassette count unknown — verify seal quantity.",
     identification:"Identification", locationContacts:"Location & contacts", technicalData:"Technical data",
     notesLegacy:"Notes & legacy data", legacyNotes:"Imported / legacy notes",
-    asset:"Asset / inventory no.", assetShort:"Asset no.", lastService:"Last service", installed:"Acquisition / installation date", responsible:"Responsible contact", phoneEmail:"Phone / email",
+    asset:"Asset / inventory no.", assetShort:"Asset no.", customerIdentifier:"Identifier / delivery note no.", hospitalOrderNo:"Hospital order no.", naturasoftNo:"NaturaSoft no.",
+    orderBilling:"Orders, delivery & invoicing", deliveryNo:"Mediola delivery note no.", deliveryDate:"Delivery date", invoiceNo:"Mediola invoice no.", invoiceDate:"Invoice date",
+    repairLocation:"Repair location", repairLocationNone:"Not specified", repairLocationOnsite:"On-site repair", repairLocationWorkshop:"Workshop repair",
+    workflow:"Current workflow", workflowStatus:"Workflow status", workflowDate:"Status date", workflowNote:"Status note", workflowHelpTitle:"Flexible workflow",
+    workflowHelp:"Statuses can be used in any order. Every change is saved to the timeline; only completed milestones receive dates on the card.",
+    wfNone:"No workflow status", wfWaitingRepair:"Waiting for repair", wfRepairProgress:"Repair in progress", wfRepairDone:"Repair completed",
+    wfWaitingPricing:"Waiting for pricing", wfPricingDone:"Pricing completed", wfWaitingQuote:"Waiting for quotation", wfQuoteSent:"Quotation sent",
+    wfWaitingOrder:"Waiting for customer order", wfOrderReceived:"Order received", wfShipped:"Shipped / delivered", wfInvoiced:"Invoiced",
+    milestoneRepair:"Repaired", milestonePricing:"Priced", milestoneOrder:"Order", milestoneShipped:"Shipped", milestoneInvoice:"Invoiced",
+    lastService:"Last service", installed:"Acquisition / installation date", responsible:"Responsible contact", phoneEmail:"Phone / email",
     technician:"Mediola technician", internalTag:"Internal / legacy tag", unitNotes:"Unit notes", schedules:"Inspection schedules",
     sixCheck:"6 month checkup", sixHelp:"Track a recurring 6-month inspection.", twelveCheck:"12 month checkup", twelveHelp:"Track a recurring annual inspection.",
     last6:"Last 6 month checkup", next6:"Next 6 month due", last12:"Last 12 month checkup", next12:"Next 12 month due",
@@ -884,13 +966,15 @@ const I18N = {
     partsUsed:"Parts used", additionalParts:"Additional parts / notes", choosePart:"Choose a part...", qty:"Qty", add:"+ Add",
     serviceCharges:"Service / labour charges", chooseService:"Choose a service...", serviceChargeHelp:"Examples: call-out charge, inspection, diagnostics, kilometre charge, commissioning.",
     manageParts:"Manage parts & labour", costCalculation:"Cost calculation", laborHours:"Labour hours", hourlyRate:"Hourly labour rate",
-    otherCost:"Other cost / adjustment", costNote:"Cost note", partsSubtotal:"Parts", laborSubtotal:"Hourly labour", serviceSubtotal:"Services", otherSubtotal:"Other", total:"Total",
+    otherCost:"Other cost / adjustment", costNote:"Cost note", partsSubtotal:"Parts — purchase net", laborSubtotal:"Hourly labour", serviceSubtotal:"Services", otherSubtotal:"Other", total:"Total",
+    photo:"Photo", view:"View", delete:"Delete", photoCaption:"Photo caption...", noHistory:"No history yet.", clickEnlarge:"Click to enlarge",
     saveRepair:"Save repair", partsModalTitle:"Parts & labour", partsModalSub:"Maintain reusable parts, service charges and labour pricing.",
     defaultHourlyRate:"Default hourly labour rate", rateHow:"How it works", rateHelp:"New repairs use this rate automatically. Each repair keeps its own saved rate, so historical totals do not change later.",
     serviceCatalog:"Service / labour catalogue", serviceName:"Charge name *", serviceCode:"Code", serviceDefaultPrice:"Default price", serviceUnit:"Unit / basis", serviceNotes:"Notes",
     serviceActive:"Active / available", serviceActiveHelp:"Inactive items remain in historical jobs but are hidden from new selection.",
     addService:"+ Add charge", saveService:"Save charge", savedServices:"Saved service / labour charges", noSavedServices:"No service charges saved yet.",
-    partCatalog:"Part catalogue", partName:"Part name *", partNumber:"Part number", unitCost:"Unit cost", partSupplier:"Supplier", partNotes:"Notes",
+    partCatalog:"Part catalogue", partName:"Part name *", partNumber:"Part number", purchaseNet:"Purchase net price", listNet:"Net list price (optional)", unitCost:"Purchase net price", partSupplier:"Supplier", partNotes:"Notes",
+    kitPresetHelp:"Presets add the individual component parts, not a KIT3/KIT4 line item.",
     partActive:"Active / available", partActiveHelp:"Inactive parts remain in historical repairs but are hidden from new repair selection.",
     inactive:"Inactive", addPart:"+ Add part", savePart:"Save part", cancelEdit:"Cancel edit", savedParts:"Saved parts", noSavedParts:"No parts saved yet.",
     catalogFooter:"Parts, service charges and labour rates are stored in the same database.", part:"Part", unitPrice:"Unit price", lineTotal:"Total", remove:"Remove",
@@ -918,12 +1002,13 @@ const I18N = {
     department:"Osztály", allDepartments:"Összes osztály", checkupType:"Felülvizsgálat típusa", bothCheckups:"6 és 12 havi",
     due:"Esedékesség", all:"Összes", overdue:"Lejárt", next30:"Következő 30 napban esedékes", next60:"Következő 60 napban esedékes", next90:"Következő 90 napban esedékes", noDue:"Nincs esedékességi dátum",
     repairStatus:"Javítás állapota", allRepairs:"Összes", hasOpenRepair:"Van nyitott javítás", noOpenRepair:"Nincs nyitott javítás",
+    workflowFilter:"Munkafolyamat állapota", allWorkflowStatuses:"Összes munkafolyamat-állapot",
     equipmentStatus:"Berendezés állapota", allEquipmentStatuses:"Összes berendezésállapot",
     statusActive:"Aktív", statusLoaner:"Csere- / kölcsönkészülék", statusOut:"Üzemen kívül", statusScrapped:"Selejtezett", statusUnknown:"Ismeretlen",
     recordStatus:"Rekord állapota", activeOnly:"Csak aktív", activeArchived:"Aktív + archivált", archivedOnly:"Csak archivált",
     quickViews:"Gyorsnézetek", nextMonth:"Következő hónap", openRepairs:"Nyitott javítások", everything:"Minden",
     locations:"Helyszínek", manageHospitals:"Kórházak és osztályok kezelése", database:"Adatbázis", databaseName:"Adatbázis neve",
-    dbNote:"A rekordok automatikusan mentődnek ebben a böngészőben. A JSON mentése gombbal hordozható mentést/adatbázist készíthetsz, amely másik gépen a JSON megnyitása gombbal betölthető. A fotók tömörítve, a JSON fájlba ágyazva tárolódnak.",
+    dbNote:"A bejelentkezett gépek ugyanazt a Supabase adatbázist töltik be és automatikusan mentik. A JSON továbbra is használható biztonsági mentésre és visszaállításra.",
     activeUnits:"Nyilvántartott berendezések", overdueCheckups:"Lejárt karbantartások / felülvizsgálatok", due30:"30 napon belül esedékes", storedPhotos:"Tárolt fotók",
     units:"STATIM berendezések", sortDue:"Rendezés: következő esedékesség", sortHospital:"Rendezés: kórház", sortModel:"Rendezés: modell", sortSerial:"Rendezés: gyári szám", sortUpdated:"Rendezés: legutóbb frissítve", printView:"Nyomtatás",
     details:"Adatok", checkups:"Felülvizsgálatok", repairs:"Javítások", photos:"Fotók", timeline:"Idővonal",
@@ -939,7 +1024,16 @@ const I18N = {
     noAutomaticKit:"Nincs automatikus készlet", scheduledKit:"Ütemezett szervizkészlet", cassetteUnknown:"A kazetták száma nincs megadva — a tömítés darabszámát ellenőrizni kell.",
     identification:"Azonosítás", locationContacts:"Helyszín és kapcsolatok", technicalData:"Műszaki adatok",
     notesLegacy:"Megjegyzések és régi adatok", legacyNotes:"Importált / régi megjegyzések",
-    asset:"Leltári / eszközszám", assetShort:"Leltári szám", lastService:"Utolsó szerviz", installed:"Beszerzés / telepítés dátuma", responsible:"Kapcsolattartó", phoneEmail:"Telefon / e-mail",
+    asset:"Leltárszám / eszközszám", assetShort:"Leltár / eszköz", customerIdentifier:"Azonosító / szállítólevélszám", hospitalOrderNo:"Kórházi megrendelésszám", naturasoftNo:"NaturaSoft szám",
+    orderBilling:"Megrendelés, szállítás és számlázás", deliveryNo:"Mediola szállítólevélszám", deliveryDate:"Leszállítás dátuma", invoiceNo:"Mediola számlaszám", invoiceDate:"Számlázás dátuma",
+    repairLocation:"Javítás helye", repairLocationNone:"Nincs megadva", repairLocationOnsite:"Helyszíni javítás", repairLocationWorkshop:"Műhelyben",
+    workflow:"Aktuális munkafolyamat", workflowStatus:"Munkafolyamat állapota", workflowDate:"Állapot dátuma", workflowNote:"Állapot megjegyzés", workflowHelpTitle:"Rugalmas munkafolyamat",
+    workflowHelp:"Az állapotok tetszőleges sorrendben használhatók. Minden állapotváltás bekerül az idővonalba; a kártyán csak a megtörtént mérföldkövek dátumai jelennek meg.",
+    wfNone:"Nincs munkafolyamat-állapot", wfWaitingRepair:"Javításra vár", wfRepairProgress:"Javítás alatt", wfRepairDone:"Javítás elvégezve",
+    wfWaitingPricing:"Árazásra vár", wfPricingDone:"Árazva", wfWaitingQuote:"Árajánlatra vár", wfQuoteSent:"Árajánlat elküldve",
+    wfWaitingOrder:"Megrendelőre vár", wfOrderReceived:"Megrendelés beérkezett", wfShipped:"Leszállítva", wfInvoiced:"Leszámlázva",
+    milestoneRepair:"Javítva", milestonePricing:"Árazva", milestoneOrder:"Megrendelés", milestoneShipped:"Leszállítva", milestoneInvoice:"Számlázva",
+    lastService:"Utolsó szerviz", installed:"Beszerzés / telepítés dátuma", responsible:"Kapcsolattartó", phoneEmail:"Telefon / e-mail",
     technician:"Mediola technikus", internalTag:"Belső / régi azonosító", unitNotes:"Berendezés megjegyzések", schedules:"Felülvizsgálati ütemezés",
     sixCheck:"6 havi felülvizsgálat", sixHelp:"Ismétlődő 6 havi felülvizsgálat követése.", twelveCheck:"12 havi felülvizsgálat", twelveHelp:"Ismétlődő éves felülvizsgálat követése.",
     last6:"Utolsó 6 havi felülvizsgálat", next6:"Következő 6 havi esedékesség", last12:"Utolsó 12 havi felülvizsgálat", next12:"Következő 12 havi esedékesség",
@@ -956,13 +1050,15 @@ const I18N = {
     partsUsed:"Felhasznált alkatrészek", additionalParts:"További alkatrészek / megjegyzések", choosePart:"Válassz alkatrészt...", qty:"Db", add:"+ Hozzáadás",
     serviceCharges:"Szolgáltatások / munkadíj tételek", chooseService:"Válassz szolgáltatást...", serviceChargeHelp:"Példák: kiszállási költség, felülvizsgálat, diagnosztika, kilométerdíj, beüzemelés.",
     manageParts:"Alkatrészek és munkadíj kezelése", costCalculation:"Költségszámítás", laborHours:"Munkaórák", hourlyRate:"Óradíj",
-    otherCost:"Egyéb költség / korrekció", costNote:"Költség megjegyzés", partsSubtotal:"Alkatrészek", laborSubtotal:"Óradíjas munkadíj", serviceSubtotal:"Szolgáltatások", otherSubtotal:"Egyéb", total:"Összesen",
+    otherCost:"Egyéb költség / korrekció", costNote:"Költség megjegyzés", partsSubtotal:"Alkatrészek — beszerzési nettó", laborSubtotal:"Óradíjas munkadíj", serviceSubtotal:"Szolgáltatások", otherSubtotal:"Egyéb", total:"Összesen",
+    photo:"Fotó", view:"Megnyitás", delete:"Törlés", photoCaption:"Fotó megjegyzése...", noHistory:"Még nincs előzmény.", clickEnlarge:"Kattints a nagyításhoz",
     saveRepair:"Javítás mentése", partsModalTitle:"Alkatrészek és munkadíj", partsModalSub:"Alkatrészek, szolgáltatási tételek és munkadíjak kezelése.",
     defaultHourlyRate:"Alapértelmezett óradíj", rateHow:"Működés", rateHelp:"Az új javítások automatikusan ezt az óradíjat használják. Minden javítás a saját mentett óradíját őrzi, ezért a korábbi összegek később nem változnak.",
     serviceCatalog:"Szolgáltatás- / munkadíjlista", serviceName:"Tétel neve *", serviceCode:"Kód", serviceDefaultPrice:"Alapár", serviceUnit:"Egység / elszámolás", serviceNotes:"Megjegyzések",
     serviceActive:"Aktív / használható", serviceActiveHelp:"Az inaktív tételek megmaradnak a korábbi munkalapokon, de új munkánál nem jelennek meg.",
     addService:"+ Tétel hozzáadása", saveService:"Tétel mentése", savedServices:"Mentett szolgáltatás- / munkadíjtételek", noSavedServices:"Még nincs mentett szolgáltatási tétel.",
-    partCatalog:"Alkatrészlista", partName:"Alkatrész neve *", partNumber:"Cikkszám", unitCost:"Egységár", partSupplier:"Beszállító", partNotes:"Megjegyzések",
+    partCatalog:"Alkatrészlista", partName:"Alkatrész neve *", partNumber:"Cikkszám", purchaseNet:"Beszerzési nettó ár", listNet:"Nettó listaár (opcionális)", unitCost:"Beszerzési nettó ár", partSupplier:"Beszállító", partNotes:"Megjegyzések",
+    kitPresetHelp:"A presetek a KIT3/KIT4 alkatrészeit külön-külön adják hozzá, nem egyetlen KIT3/KIT4 tételként.",
     partActive:"Aktív / rendelhető", partActiveHelp:"Az inaktív alkatrészek megmaradnak a korábbi javításokban, de új javításnál nem jelennek meg.",
     inactive:"Inaktív", addPart:"+ Alkatrész hozzáadása", savePart:"Alkatrész mentése", cancelEdit:"Szerkesztés megszakítása", savedParts:"Mentett alkatrészek", noSavedParts:"Még nincs mentett alkatrész.",
     catalogFooter:"Az alkatrészek, szolgáltatási tételek és munkadíjak ugyanabban az adatbázisban tárolódnak.", part:"Alkatrész", unitPrice:"Egységár", lineTotal:"Összeg", remove:"Törlés",
@@ -989,7 +1085,17 @@ const t = k => I18N[currentLang][k] ?? I18N.en[k] ?? k;
 const todayISO = () => new Date().toISOString().slice(0,10);
 const esc = s => String(s??"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const parseDate = s => s ? new Date(s+"T12:00:00") : null;
-const fmt = s => s ? new Intl.DateTimeFormat('en-GB',{day:'2-digit',month:'short',year:'numeric'}).format(parseDate(s)) : "—";
+const fmt = s => s ? new Intl.DateTimeFormat(currentLang==="hu"?"hu-HU":"en-GB",{day:"2-digit",month:"short",year:"numeric"}).format(parseDate(s)) : "—";
+function serviceUnitText(v){
+  const raw=String(v||"");
+  if(currentLang!=="hu")return raw;
+  const m={
+    "per job":"munkánként","per visit":"kiszállásonként","per unit":"berendezésenként",
+    "per inspection":"felülvizsgálatonként","per hour":"óránként","per km":"km-enként",
+    "per shipment":"szállításonként"
+  };
+  return m[raw]||raw;
+}
 const daysFromToday = s => s ? Math.ceil((parseDate(s)-parseDate(todayISO()))/86400000) : null;
 const addMonths = (dateStr, months) => {
   if(!dateStr) return "";
@@ -1021,10 +1127,8 @@ function kitComponentsFor(u,code){
   const cassetteQty=cassetteKnown?Math.max(0,Number(u.cassetteCount)||0):1;
   return (kit.components||[]).filter(c=>!c.onlyS||isSType(u)).map((c,i)=>{
     const catalog=(db.partsCatalog||[]).find(p=>String(p.partNo||"").toUpperCase()===String(c.partNo||"").toUpperCase());
-    return {
-      id:uid("usedpart"),catalogId:catalog?.id||"",name:catalog?.name||c.name,partNo:c.partNo||"",
-      unitCost:Number(catalog?.cost)||0,qty:c.cassetteQty?cassetteQty:1
-    };
+    const purchaseCost=Number(catalog?.cost)||0,listPrice=Number(catalog?.listPrice)||0;
+    return {id:uid("usedpart"),catalogId:catalog?.id||"",name:catalog?.name||c.name,partNo:c.partNo||"",purchaseCost,listPrice,unitCost:purchaseCost,qty:c.cassetteQty?cassetteQty:1};
   });
 }
 function fillAutomaticDueDates(u){
@@ -1191,9 +1295,10 @@ function applyLanguage(){
   labels[3].textContent=L("checkupType");
   labels[4].textContent=L("due");
   labels[5].textContent=L("repairStatus");
-  labels[6].textContent=L("equipmentStatus");
-  labels[7].textContent=L("recordStatus");
-  labels[8].textContent=L("databaseName");
+  labels[6].textContent=L("workflowFilter");
+  labels[7].textContent=L("equipmentStatus");
+  labels[8].textContent=L("recordStatus");
+  labels[9].textContent=L("databaseName");
 
   side.querySelectorAll(".section-title")[0].textContent=L("filter");
   side.querySelectorAll(".section-title")[1].textContent=L("quickViews");
@@ -1214,6 +1319,7 @@ function applyLanguage(){
   $("#repairFilter").options[0].text=L("allRepairs");
   $("#repairFilter").options[1].text=L("hasOpenRepair");
   $("#repairFilter").options[2].text=L("noOpenRepair");
+  $("#workflowFilterLabel").textContent=L("workflowFilter");
   $("#unitStatusFilter").options[0].text=L("allEquipmentStatuses");
   $("#unitStatusFilter").options[1].text=L("statusActive");
   $("#unitStatusFilter").options[2].text=L("statusLoaner");
@@ -1231,6 +1337,11 @@ function applyLanguage(){
   $("#stat30").nextElementSibling.textContent=L("due30");
   $("#statRepairs").nextElementSibling.textContent=L("openRepairs");
   $("#statPhotos").nextElementSibling.textContent=L("storedPhotos");
+  $("#statWaitRepairLabel").textContent=L("wfWaitingRepair");
+  $("#statRepairProgressLabel").textContent=L("wfRepairProgress");
+  $("#statWaitPricingLabel").textContent=L("wfWaitingPricing");
+  $("#statWaitQuoteLabel").textContent=L("wfWaitingQuote");
+  $("#statWaitOrderLabel").textContent=L("wfWaitingOrder");
   $(".toolbar h2").textContent=L("units");
   $("#sortBy").options[0].text=L("sortDue");
   $("#sortBy").options[1].text=L("sortHospital");
@@ -1246,7 +1357,9 @@ function applyLanguage(){
   detailPage.querySelector(".notice span").textContent=L("masterNote");
   detailPage.querySelector(".notice button").textContent=L("manageHospitals");
   $("#identificationTitle").textContent=L("identification");
-  $("#locationTitle").textContent=L("locationContacts");
+  $("#locationTitle").textContent=currentLang==="hu"?"Kórház / ügyfél, helyszín és kapcsolatok":"Hospital / customer, location & contacts";
+  $("#orderBillingTitle").textContent=L("orderBilling");
+  $("#workflowTitle").textContent=L("workflow");
   $("#technicalTitle").textContent=L("technicalData");
   $("#schedulesTitle").textContent=L("schedules");
   $("#notesTitle").textContent=L("notesLegacy");
@@ -1258,6 +1371,7 @@ function applyLanguage(){
   $("#lblProductNo").textContent=L("productNo");
   $("#lblSerial").textContent=L("serial");
   $("#lblAsset").textContent=L("asset");
+  $("#lblCustomerIdentifier").textContent=L("customerIdentifier");
   $("#lblTag").textContent=L("internalTag");
   $("#lblHospital").textContent=L("hospital")+" *";
   $("#lblDepartment").textContent=L("wardDepartment");
@@ -1265,6 +1379,18 @@ function applyLanguage(){
   $("#lblResponsible").textContent=L("responsible");
   $("#lblPhoneEmail").textContent=L("phoneEmail");
   $("#lblTechnician").textContent=L("technician");
+  $("#lblHospitalOrderNo").textContent=L("hospitalOrderNo");
+  $("#lblNaturasoftNo").textContent=L("naturasoftNo");
+  $("#lblRepairLocation").textContent=L("repairLocation");
+  $("#lblDeliveryNo").textContent=L("deliveryNo");
+  $("#lblDeliveryDate").textContent=L("deliveryDate");
+  $("#lblInvoiceNo").textContent=L("invoiceNo");
+  $("#lblInvoiceDate").textContent=L("invoiceDate");
+  $("#lblWorkflowStatus").textContent=L("workflowStatus");
+  $("#lblWorkflowDate").textContent=L("workflowDate");
+  $("#lblWorkflowNote").textContent=L("workflowNote");
+  $("#workflowHelpTitle").textContent=L("workflowHelpTitle");
+  $("#workflowHelp").textContent=L("workflowHelp");
   $("#lblManufactured").textContent=L("manufacturing");
   $("#lblInstalled").textContent=L("installed");
   $("#lblCycleCount").textContent=L("cycleCount");
@@ -1322,6 +1448,7 @@ function applyLanguage(){
   $("#lblRepairEventType").textContent=L("eventType");
   $("#rDate").parentElement.querySelector("label").textContent=L("reportedDate");
   $("#rStatus").parentElement.querySelector("label").textContent=L("status");
+  $("#repairLocationLabel").textContent=L("repairLocation");
   $("#rTech").parentElement.querySelector("label").textContent=L("technician");
   $("#rDone").parentElement.querySelector("label").textContent=L("completedDate");
   $("#rJob").parentElement.querySelector("label").textContent=L("repairNo");
@@ -1331,12 +1458,17 @@ function applyLanguage(){
   $("#repairPartsLabel").textContent=L("partsUsed");
   $("#qtyLabel").textContent=L("qty");
   $("#addRepairPartBtn").textContent=L("add");
+  $("#addKit3PresetBtn").textContent=currentLang==="hu"?"+ KIT3 alkatrészek":"+ KIT3 preset";
+  $("#addKit4PresetBtn").textContent=currentLang==="hu"?"+ KIT4 alkatrészek":"+ KIT4 preset";
+  $("#kitPresetHelp").textContent=L("kitPresetHelp");
   $("#repairServicesLabel").textContent=L("serviceCharges");
   $("#serviceQtyLabel").textContent=L("qty");
   $("#addRepairServiceBtn").textContent=L("add");
   $("#serviceChargeHelp").textContent=L("serviceChargeHelp");
   $("#openPartsFromRepairBtn").textContent=L("manageParts");
   $("#additionalPartsLabel").textContent=L("additionalParts");
+  $("#rParts").placeholder=currentLang==="hu"?"Nem katalógusos alkatrészek, gyári számok, megjegyzések...":"Non-catalogue parts, serials, notes...";
+  $("#rCostNote").placeholder=currentLang==="hu"?"Opcionális":"Optional";
   $("#repairCostTitle").textContent=L("costCalculation");
   $("#laborHoursLabel").textContent=L("laborHours");
   $("#hourlyRateLabel").textContent=L("hourlyRate");
@@ -1361,6 +1493,10 @@ function applyLanguage(){
   $("#serviceCostLabel").textContent=L("serviceDefaultPrice");
   $("#serviceUnitLabel").textContent=L("serviceUnit");
   $("#serviceNotesLabel").textContent=L("serviceNotes");
+  $("#catalogServiceCode").placeholder=currentLang==="hu"?"Opcionális":"Optional";
+  $("#catalogServiceCost").placeholder="HUF";
+  $("#catalogServiceUnit").placeholder=currentLang==="hu"?"pl. kiszállásonként":"e.g. per visit";
+  $("#catalogServiceNotes").placeholder=currentLang==="hu"?"Opcionális":"Optional";
   $("#serviceActiveLabel").textContent=L("serviceActive");
   $("#serviceActiveHelp").textContent=" "+L("serviceActiveHelp");
   $("#saveCatalogServiceBtn").textContent=editingCatalogServiceId?L("saveService"):L("addService");
@@ -1369,9 +1505,13 @@ function applyLanguage(){
   $("#partCatalogTitle").textContent=L("partCatalog");
   $("#partNameLabel").textContent=L("partName");
   $("#partNumberLabel").textContent=L("partNumber");
-  $("#unitCostLabel").textContent=L("unitCost");
+  $("#purchaseCostLabel").textContent=L("purchaseNet");
+  $("#listPriceLabel").textContent=L("listNet");
   $("#partSupplierLabel").textContent=L("partSupplier");
   $("#partNotesLabel").textContent=L("partNotes");
+  $("#catalogPartNo").placeholder=currentLang==="hu"?"Opcionális":"Optional";
+  $("#catalogPartSupplier").placeholder=currentLang==="hu"?"Opcionális":"Optional";
+  $("#catalogPartNotes").placeholder=currentLang==="hu"?"Kompatibilitás / rendelési megjegyzés":"Compatibility / ordering notes";
   $("#partActiveLabel").textContent=L("partActive");
   $("#partActiveHelp").textContent=" "+L("partActiveHelp");
   $("#saveCatalogPartBtn").textContent=editingCatalogPartId?L("savePart"):L("addPart");
@@ -1400,6 +1540,10 @@ function applyLanguage(){
   $("#saveWardBtn").textContent=L("saveWard");
   $$('#wardModal [data-close="wardModal"]').forEach(b=>{if(b.textContent.trim()!=="×")b.textContent=L("cancel")});
 
+  const repairLocationTexts=[L("repairLocationNone"),L("repairLocationOnsite"),L("repairLocationWorkshop")];
+  repairLocationTexts.forEach((x,i)=>{if($("#fRepairLocation").options[i])$("#fRepairLocation").options[i].text=x;if($("#rRepairLocation").options[i])$("#rRepairLocation").options[i].text=x});
+  const workflowTexts=[L("wfNone"),L("wfWaitingRepair"),L("wfRepairProgress"),L("wfRepairDone"),L("wfWaitingPricing"),L("wfPricingDone"),L("wfWaitingQuote"),L("wfQuoteSent"),L("wfWaitingOrder"),L("wfOrderReceived"),L("wfShipped"),L("wfInvoiced")];
+  workflowTexts.forEach((x,i)=>{if($("#fWorkflowStatus").options[i])$("#fWorkflowStatus").options[i].text=x});
   $("#cResult").options[0].text=L("passed"); $("#cResult").options[1].text=L("passedNotes"); $("#cResult").options[2].text=L("repairRequired"); $("#cResult").options[3].text=L("failed");
   $("#rStatus").options[0].text=L("open"); $("#rStatus").options[1].text=L("waitingParts"); $("#rStatus").options[2].text=L("sentOut"); $("#rStatus").options[3].text=L("completed"); $("#rStatus").options[4].text=L("cancelled");
 
@@ -1438,6 +1582,31 @@ function masterHospitals(){
   db.locations=[...byName.values()].sort((a,b)=>a.name.localeCompare(b.name));
   return db.locations;
 }
+function workflowFilterDefinitions(){
+  return [
+    ["waiting_repair","wfWaitingRepair"],
+    ["repair_in_progress","wfRepairProgress"],
+    ["repair_completed","wfRepairDone"],
+    ["waiting_pricing","wfWaitingPricing"],
+    ["pricing_completed","wfPricingDone"],
+    ["waiting_quote","wfWaitingQuote"],
+    ["quote_sent","wfQuoteSent"],
+    ["waiting_order","wfWaitingOrder"],
+    ["order_received","wfOrderReceived"],
+    ["shipped","wfShipped"],
+    ["invoiced","wfInvoiced"]
+  ];
+}
+function rebuildWorkflowFilter(){
+  const el=$("#workflowFilter");if(!el)return;
+  const selected=el.value;
+  const active=db.units.filter(u=>!u.archived);
+  const counts={};
+  active.forEach(u=>{const k=u.workflowStatus||"";counts[k]=(counts[k]||0)+1});
+  el.innerHTML=`<option value="">${t("allWorkflowStatuses")}</option>`+
+    workflowFilterDefinitions().map(([value,key])=>`<option value="${value}">${esc(t(key))} (${counts[value]||0})</option>`).join("");
+  if([...el.options].some(o=>o.value===selected))el.value=selected;
+}
 function rebuildFilters(){
   const masters=masterHospitals();
   const hospitals=masters.map(h=>h.name).sort();
@@ -1454,6 +1623,7 @@ function rebuildFilters(){
   const selectedD=$("#departmentFilter").value;
   $("#departmentFilter").innerHTML=`<option value="">${t("allDepartments")}</option>`+deps.map(x=>`<option ${x===selectedD?"selected":""}>${esc(x)}</option>`).join("");
   if(selectedD && !deps.includes(selectedD)) $("#departmentFilter").value="";
+  rebuildWorkflowFilter();
 }
 function populateUnitHospitalSelect(selectedHospital="",selectedDepartment=""){
   const masters=masterHospitals();
@@ -1474,7 +1644,7 @@ function populateUnitWardSelect(selectedDepartment=""){
 $("#fHospital").addEventListener("change",()=>populateUnitWardSelect(""));
 function filteredUnits(){
   const q=$("#search").value.trim().toLowerCase(), h=$("#hospitalFilter").value, dep=$("#departmentFilter").value;
-  const interval=$("#intervalFilter").value, due=$("#dueFilter").value, repair=$("#repairFilter").value, unitStatus=$("#unitStatusFilter").value, arch=$("#archiveFilter").value;
+  const interval=$("#intervalFilter").value, due=$("#dueFilter").value, repair=$("#repairFilter").value, workflow=$("#workflowFilter").value, unitStatus=$("#unitStatusFilter").value, arch=$("#archiveFilter").value;
   return db.units.filter(u=>{
     if(arch==="active" && u.archived) return false;
     if(arch==="archived" && !u.archived) return false;
@@ -1488,10 +1658,11 @@ function filteredUnits(){
     const or=openRepairs(u).length;
     if(repair==="open" && !or) return false;
     if(repair==="none" && or) return false;
+    if(workflow && (u.workflowStatus||"")!==workflow) return false;
     if(unitStatus && (u.status||"Active")!==unitStatus) return false;
     if(q){
       const hay=JSON.stringify({
-        id:u.unitId,h:u.hospital,d:u.department,l:u.location,type:u.type||u.model,product:u.productNo,s:u.serial,a:u.assetNo,t:u.tag,n:u.notes,legacy:u.legacyNotes,c:u.contact,
+        id:u.unitId,h:u.hospital,d:u.department,l:u.location,type:u.type||u.model,product:u.productNo,s:u.serial,a:u.assetNo,customerId:u.customerIdentifierNo,hospitalOrder:u.hospitalOrderNo,naturasoft:u.naturasoftNo,delivery:u.mediolaDeliveryNo,invoice:u.mediolaInvoiceNo,workflow:u.workflowStatus,repairLocation:u.repairLocation,t:u.tag,n:u.notes,legacy:u.legacyNotes,c:u.contact,
         manufactured:u.manufactured,sw:u.software,ifw:u.interfaceFirmware,accessories:u.accessories,cycles:u.cycleCount,status:u.status,
         checks:u.checkups?.map(c=>[c.jobNo,c.notes,c.technician,c.cycleCount]), repairs:u.repairs?.map(r=>[r.eventType,r.jobNo,r.notes,r.parts])
       }).toLowerCase();
@@ -1512,6 +1683,13 @@ function renderStats(){
   });
   $("#statUnits").textContent=active.length; $("#statOverdue").textContent=overdue; $("#stat30").textContent=d30;
   $("#statRepairs").textContent=active.reduce((n,u)=>n+openRepairs(u).length,0); $("#statPhotos").textContent=photos;
+  const wc=status=>active.filter(u=>(u.workflowStatus||"")===status).length;
+  $("#statWaitRepair").textContent=wc("waiting_repair");
+  $("#statRepairProgress").textContent=wc("repair_in_progress");
+  $("#statWaitPricing").textContent=wc("waiting_pricing");
+  $("#statWaitQuote").textContent=wc("waiting_quote");
+  $("#statWaitOrder").textContent=wc("waiting_order");
+  $$("#workflowStats [data-workflow-quick]").forEach(x=>x.classList.toggle("active",x.dataset.workflowQuick===($("#workflowFilter").value||"")));
 }
 function render(){
   rebuildFilters(); renderStats();
@@ -1531,44 +1709,49 @@ function equipmentStatusText(status){
   const map={Active:"statusActive",Loaner:"statusLoaner","Out of service":"statusOut",Scrapped:"statusScrapped",Unknown:"statusUnknown"};
   return t(map[status]||"statusUnknown");
 }
+function workflowStatusText(status){
+  const map={"":"wfNone",waiting_repair:"wfWaitingRepair",repair_in_progress:"wfRepairProgress",repair_completed:"wfRepairDone",waiting_pricing:"wfWaitingPricing",pricing_completed:"wfPricingDone",waiting_quote:"wfWaitingQuote",quote_sent:"wfQuoteSent",waiting_order:"wfWaitingOrder",order_received:"wfOrderReceived",shipped:"wfShipped",invoiced:"wfInvoiced"};
+  return t(map[status]||status||"wfNone");
+}
+function workflowStatusClass(status){
+  if(["repair_completed","pricing_completed","quote_sent","order_received","invoiced"].includes(status))return "done";
+  if(status==="shipped")return "shipped";
+  if(status==="repair_in_progress")return "progress";
+  if(status)return "wait";
+  return "";
+}
+function repairLocationText(value){return value==="On-site"?t("repairLocationOnsite"):value==="Workshop"?t("repairLocationWorkshop"):t("repairLocationNone")}
+function cardMilestones(u){
+  const m=u.workflowMilestones||{};
+  const items=[[t("milestoneRepair"),m.repairCompleted],[t("milestonePricing"),m.pricingCompleted],[t("milestoneOrder"),m.orderReceived],[t("milestoneShipped"),u.mediolaDeliveryDate||m.shipped],[t("milestoneInvoice"),u.mediolaInvoiceDate||m.invoiced]].filter(x=>x[1]);
+  return items.length?`<div class="milestones">${items.map(([label,date])=>`<span class="milestone"><b>${esc(label)}:</b> ${fmt(date)}</span>`).join("")}</div>`:"";
+}
 function cardHTML(u){
   const cls=unitSeverity(u), repairs=openRepairs(u);
   const schedule=scheduleEntries(u).map(e=>{
-    const sev=entrySeverity(u,e);
-    const kit=e.kit?` · ${esc(e.kit)}`:"";
-    const dateText=e.next?fmt(e.next):t("noDueDate");
-    return `<div class="due-line">
-      <span><b>${e.label}</b>${kit}<br><span class="sub">${dateText}${e.nextCycle!==""&&e.nextCycle!=null?` · ${currentLang==="hu"?"ciklus":"cycle"} ${new Intl.NumberFormat('hu-HU').format(Number(e.nextCycle))}`:""}</span></span>
-      <span class="badge ${sev}">${entryDueText(u,e)}</span>
-    </div>`;
+    const sev=entrySeverity(u,e),kit=e.kit?` · ${esc(e.kit)}`:"",dateText=e.next?fmt(e.next):t("noDueDate");
+    return `<div class="due-line"><span><b>${e.label}</b>${kit}<br><span class="sub">${dateText}${e.nextCycle!==""&&e.nextCycle!=null?` · ${currentLang==="hu"?"ciklus":"cycle"} ${new Intl.NumberFormat('hu-HU').format(Number(e.nextCycle))}`:""}</span></span><span class="badge ${sev}">${entryDueText(u,e)}</span></div>`;
   }).join("");
-  const status=u.status||"Active";
+  const status=u.status||"Active",wf=u.workflowStatus||"";
+  const delivery=[u.mediolaDeliveryNo,u.mediolaDeliveryDate?fmt(u.mediolaDeliveryDate):""].filter(Boolean).join(" · ");
+  const invoice=[u.mediolaInvoiceNo,u.mediolaInvoiceDate?fmt(u.mediolaInvoiceDate):""].filter(Boolean).join(" · ");
   return `<article class="card due-${cls} ${u.archived?"archived":""}">
-    <div class="stripe ${cls}"></div>
-    <div class="card-top">
-      <div style="flex:1"><h3>${esc(u.type||u.model||"STATIM")} · ${esc(u.serial||"No serial")}</h3>
-        <div class="sub">${esc(u.hospital||t("noHospital"))} → ${esc(u.department||t("noDepartment"))}${u.location?` · ${esc(u.location)}`:""}</div>
-        <div class="pillrow">
-          ${u.unitId?`<span class="badge">${esc(u.unitId)}</span>`:""}
-          ${u.productNo?`<span class="badge">${esc(u.productNo)}</span>`:""}
-          ${status!=="Active"?`<span class="badge repair">${esc(equipmentStatusText(status))}</span>`:""}
-          ${repairs.length?`<span class="badge repair">${repairs.length} ${repairs.length==1?t("openRepairSing"):t("openRepairPlur")}</span>`:""}
-          ${u.archived?`<span class="badge">${t("archived")}</span>`:""}
-        </div>
-      </div>
-    </div>
+    <div class="stripe ${cls}"></div><div class="card-top"><div style="flex:1">
+      <h3>${esc(u.type||u.model||"STATIM")} · <span title="${t("serial")}">SN: ${esc(u.serial||"—")}</span></h3>
+      <div class="sub">${esc(u.hospital||t("noHospital"))} → ${esc(u.department||t("noDepartment"))}${u.location?` · ${esc(u.location)}`:""}</div>
+      <div class="pillrow">${u.unitId?`<span class="badge">${esc(u.unitId)}</span>`:""}${u.productNo?`<span class="badge">${esc(u.productNo)}</span>`:""}${status!=="Active"?`<span class="badge repair">${esc(equipmentStatusText(status))}</span>`:""}${wf?`<span class="workflow-badge ${workflowStatusClass(wf)}">${esc(workflowStatusText(wf))}</span>`:""}${u.repairLocation?`<span class="badge">${esc(repairLocationText(u.repairLocation))}</span>`:""}${repairs.length?`<span class="badge repair">${repairs.length} ${repairs.length==1?t("openRepairSing"):t("openRepairPlur")}</span>`:""}${u.archived?`<span class="badge">${t("archived")}</span>`:""}</div>
+      ${cardMilestones(u)}
+    </div></div>
     <div class="meta">
       <div class="meta-box"><div class="k">${t("assetShort")}</div><div class="v">${esc(u.assetNo||"—")}</div></div>
-      <div class="meta-box"><div class="k">${t("cycleCount")}</div><div class="v">${u.cycleCount!==""&&u.cycleCount!=null?new Intl.NumberFormat('hu-HU').format(Number(u.cycleCount)):"—"}</div></div>
-      <div class="meta-box"><div class="k">${t("software")}</div><div class="v">${esc(u.software||"—")}</div></div>
-      <div class="meta-box"><div class="k">${t("lastService")}</div><div class="v">${fmt((u.checkups||[]).sort((a,b)=>b.date.localeCompare(a.date))[0]?.date)}</div></div>
+      <div class="meta-box"><div class="k">${t("hospitalOrderNo")}</div><div class="v">${esc(u.hospitalOrderNo||"—")}</div></div>
+      <div class="meta-box"><div class="k">${t("naturasoftNo")}</div><div class="v">${esc(u.naturasoftNo||"—")}</div></div>
+      <div class="meta-box"><div class="k">${t("deliveryNo")}</div><div class="v">${esc(delivery||"—")}</div></div>
+      <div class="meta-box"><div class="k">${t("invoiceNo")}</div><div class="v">${esc(invoice||"—")}</div></div>
+      <div class="meta-box"><div class="k">${t("lastService")}</div><div class="v">${fmt((u.checkups||[]).slice().sort((a,b)=>(b.date||"").localeCompare(a.date||""))[0]?.date)}</div></div>
     </div>
     <div class="due-list">${schedule||`<div class="sub">${t("noInspection")}</div>`}</div>
-    <div class="card-actions">
-      <button class="btn small brand" onclick="editUnit('${u.id}')">${currentLang==="hu"?"Megnyitás":"Open unit"}</button>
-      <button class="btn small ghost" onclick="quickCheck('${u.id}')">${currentLang==="hu"?"Felülvizsgálat":"Record checkup"}</button>
-      <button class="btn small ghost" onclick="quickRepair('${u.id}')">${currentLang==="hu"?"Javítás hozzáadása":"Add repair"}</button>
-    </div>
+    <div class="card-actions"><button class="btn small brand" onclick="editUnit('${u.id}')">${currentLang==="hu"?"Megnyitás":"Open unit"}</button><button class="btn small ghost" onclick="quickCheck('${u.id}')">${currentLang==="hu"?"Felülvizsgálat":"Record checkup"}</button><button class="btn small ghost" onclick="quickRepair('${u.id}')">${currentLang==="hu"?"Javítás hozzáadása":"Add repair"}</button></div>
   </article>`;
 }
 /* Unit editing */
@@ -1582,10 +1765,11 @@ function nextMediolaUnitId(){
 }
 function defaultUnit(){
   return {id:uid("unit"),unitId:nextMediolaUnitId(),status:"Active",manufacturer:"SciCan",type:"STATIM 5000S",model:"STATIM 5000S",productNo:"",
-    hospital:"",department:"",location:"",serial:"",assetNo:"",manufactured:"",installed:"",cycleCount:"",cycleCountDate:"",
-    software:"",interfaceFirmware:"",accessories:"",cassetteCount:"",maintenanceProfile:"auto",contact:"",contactInfo:"",technician:"",tag:"",notes:"",legacyNotes:"",archived:false,
-    schedules:{six:{enabled:true,last:"",next:"",lastCycle:"",nextCycle:""},twelve:{enabled:true,last:"",next:""}},
-    checkups:[],repairs:[],photos:[],createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};
+    hospital:"",department:"",location:"",serial:"",assetNo:"",customerIdentifierNo:"",hospitalOrderNo:"",naturasoftNo:"",
+    mediolaDeliveryNo:"",mediolaDeliveryDate:"",mediolaInvoiceNo:"",mediolaInvoiceDate:"",repairLocation:"",
+    workflowStatus:"",workflowHistory:[],workflowMilestones:{repairCompleted:"",pricingCompleted:"",quoteSent:"",orderReceived:"",shipped:"",invoiced:""},
+    manufactured:"",installed:"",cycleCount:"",cycleCountDate:"",software:"",interfaceFirmware:"",accessories:"",cassetteCount:"",maintenanceProfile:"auto",contact:"",contactInfo:"",technician:"",tag:"",notes:"",legacyNotes:"",archived:false,
+    schedules:{six:{enabled:true,last:"",next:"",lastCycle:"",nextCycle:""},twelve:{enabled:true,last:"",next:""}},checkups:[],repairs:[],photos:[],createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};
 }
 function newUnit(){editingId=null; fillUnit(defaultUnit()); $("#deleteUnitBtn").style.display="none"; openModal("unitModal")}
 function editUnit(id){editingId=id; const u=db.units.find(x=>x.id===id); if(!u)return; fillUnit(structuredClone(u)); $("#deleteUnitBtn").style.display=""; openModal("unitModal")}
@@ -1597,9 +1781,12 @@ function fillUnit(u){
   $("#modalSub").textContent=[u.unitId,u.hospital,u.department].filter(Boolean).join(" · ");
   $("#fUnitId").value=u.unitId||"";$("#fStatus").value=u.status||"Active";
   $("#fManufacturer").value=u.manufacturer||"SciCan";$("#fType").value=typ;$("#fProductNo").value=u.productNo||"";$("#fSerial").value=u.serial||"";
-  $("#fAsset").value=u.assetNo||"";$("#fTag").value=u.tag||"";
+  $("#fAsset").value=u.assetNo||"";$("#fCustomerIdentifier").value=u.customerIdentifierNo||"";$("#fTag").value=u.tag||"";
   populateUnitHospitalSelect(u.hospital||"",u.department||"");$("#fLocation").value=u.location||"";
   $("#fContact").value=u.contact||"";$("#fContactInfo").value=u.contactInfo||"";$("#fTechnician").value=u.technician||"";
+  $("#fHospitalOrderNo").value=u.hospitalOrderNo||"";$("#fNaturasoftNo").value=u.naturasoftNo||"";$("#fRepairLocation").value=u.repairLocation||"";
+  $("#fDeliveryNo").value=u.mediolaDeliveryNo||"";$("#fDeliveryDate").value=u.mediolaDeliveryDate||"";$("#fInvoiceNo").value=u.mediolaInvoiceNo||"";$("#fInvoiceDate").value=u.mediolaInvoiceDate||"";
+  $("#fWorkflowStatus").value=u.workflowStatus||"";$("#fWorkflowDate").value=todayISO();$("#fWorkflowNote").value="";
   $("#fManufactured").value=u.manufactured||"";$("#fInstalled").value=u.installed||"";
   $("#fCycleCount").value=u.cycleCount??"";$("#fCycleCountDate").value=u.cycleCountDate||"";
   $("#fSoftware").value=u.software||"";$("#fInterfaceFirmware").value=u.interfaceFirmware||"";$("#fAccessories").value=u.accessories||"";
@@ -1615,9 +1802,12 @@ function fillUnit(u){
 function readUnitForm(base){
   base.unitId=$("#fUnitId").value.trim();base.status=$("#fStatus").value||"Active";
   base.manufacturer=$("#fManufacturer").value.trim();base.type=$("#fType").value.trim();base.model=base.type;base.productNo=$("#fProductNo").value.trim();
-  base.serial=$("#fSerial").value.trim();base.assetNo=$("#fAsset").value.trim();base.tag=$("#fTag").value.trim();
+  base.serial=$("#fSerial").value.trim();base.assetNo=$("#fAsset").value.trim();base.customerIdentifierNo=$("#fCustomerIdentifier").value.trim();base.tag=$("#fTag").value.trim();
   base.hospital=$("#fHospital").value;base.department=$("#fDepartment").value;base.location=$("#fLocation").value.trim();
   base.contact=$("#fContact").value.trim();base.contactInfo=$("#fContactInfo").value.trim();base.technician=$("#fTechnician").value.trim();
+  base.hospitalOrderNo=$("#fHospitalOrderNo").value.trim();base.naturasoftNo=$("#fNaturasoftNo").value.trim();base.repairLocation=$("#fRepairLocation").value;
+  base.mediolaDeliveryNo=$("#fDeliveryNo").value.trim();base.mediolaDeliveryDate=$("#fDeliveryDate").value;base.mediolaInvoiceNo=$("#fInvoiceNo").value.trim();base.mediolaInvoiceDate=$("#fInvoiceDate").value;
+  base.workflowStatus=$("#fWorkflowStatus").value;
   base.manufactured=$("#fManufactured").value.trim();base.installed=$("#fInstalled").value;
   base.cycleCount=$("#fCycleCount").value===""?"":Math.max(0,Number($("#fCycleCount").value)||0);base.cycleCountDate=$("#fCycleCountDate").value;
   base.software=$("#fSoftware").value.trim();base.interfaceFirmware=$("#fInterfaceFirmware").value.trim();base.accessories=$("#fAccessories").value.trim();
@@ -1631,8 +1821,21 @@ function readUnitForm(base){
   fillAutomaticDueDates(base);
   base.updatedAt=new Date().toISOString(); return base;
 }
+function recordWorkflowChange(u,oldStatus,newStatus,date,note=""){
+  if(oldStatus===newStatus)return;
+  const d=date||todayISO();
+  u.workflowHistory=Array.isArray(u.workflowHistory)?u.workflowHistory:[];
+  u.workflowHistory.push({id:uid("workflow"),date:d,at:new Date().toISOString(),from:oldStatus||"",status:newStatus||"",note:note||"",by:authSession?.user?.email||""});
+  u.workflowMilestones=u.workflowMilestones||{};
+  const milestoneMap={repair_completed:"repairCompleted",pricing_completed:"pricingCompleted",quote_sent:"quoteSent",order_received:"orderReceived",shipped:"shipped",invoiced:"invoiced"};
+  const key=milestoneMap[newStatus];if(key)u.workflowMilestones[key]=d;
+  if(newStatus==="shipped"&&!u.mediolaDeliveryDate)u.mediolaDeliveryDate=d;
+  if(newStatus==="invoiced"&&!u.mediolaInvoiceDate)u.mediolaInvoiceDate=d;
+}
 $("#saveUnitBtn").onclick=()=>{
-  let u=editingId?currentUnit():defaultUnit(); readUnitForm(u);
+  let u=editingId?currentUnit():defaultUnit();
+  const oldWorkflowStatus=u.workflowStatus||"",requestedWorkflowStatus=$("#fWorkflowStatus").value||"",workflowDate=$("#fWorkflowDate").value||todayISO(),workflowNote=$("#fWorkflowNote").value.trim();
+  readUnitForm(u);recordWorkflowChange(u,oldWorkflowStatus,requestedWorkflowStatus,workflowDate,workflowNote);
   if(!u.hospital||!u.department||!u.serial){
     alert(currentLang==="hu"?"A kórház, osztály és gyári szám kötelező.":"Hospital, department and serial number are required.");return
   }
@@ -1731,19 +1934,20 @@ $("#cDate").onchange=()=>$("#cNext").value=addMonths($("#cDate").value,Number($(
 $("#cServiceKit").onchange=()=>updateMaintenanceKitUI(false);
 
 function createMaintenanceHistoryFromCheck(u,c){
-  if(!c.serviceKit || !$("#cCreateMaintenanceRecord").checked)return;
+  if(!c.serviceKit || !$("#cCreateMaintenanceRecord").checked)return null;
   const parts=kitComponentsFor(u,c.serviceKit);
-  const partsTotal=parts.reduce((sum,p)=>sum+(Number(p.unitCost)||0)*(Number(p.qty)||0),0);
+  const partsTotal=parts.reduce((sum,p)=>sum+((p.purchaseCost!==""&&p.purchaseCost!=null?Number(p.purchaseCost):Number(p.unitCost))||0)*(Number(p.qty)||0),0);
   const partsText=parts.map(p=>`${p.name}${p.qty!==1?` × ${p.qty}`:""} (${p.partNo})`).join(", ");
-  u.repairs=u.repairs||[];
+  u.repairs=u.repairs||[];const repairId=uid("repair");
   u.repairs.push({
-    id:uid("repair"),sourceCheckId:c.id,eventType:"Maintenance",date:c.date,status:"Completed",technician:c.technician,
+    id:repairId,sourceCheckId:c.id,eventType:"Maintenance",date:c.date,status:"Completed",technician:c.technician,
     completedDate:c.date,jobNo:c.jobNo,cost:partsTotal,
     notes:`${c.serviceKit} — ${currentLang==="hu"?"ütemezett karbantartás":"scheduled maintenance"}`,
     parts:partsText,partsUsed:parts,servicesUsed:[],laborHours:0,hourlyRate:Number(db.settings?.hourlyRate)||0,otherCost:0,
     costNote:partsTotal? "":(currentLang==="hu"?"Az alkatrészárak még nincsenek kitöltve a katalógusban.":"Part prices are not yet filled in the catalogue."),
     updatedAt:new Date().toISOString()
   });
+  c.linkedRepairId=repairId;return repairId;
 }
 $("#saveCheckBtn").onclick=()=>{
   const u=currentUnit(); if(!u)return;
@@ -1800,7 +2004,7 @@ function populateRepairPartSelect(){
   if(!sel)return;
   const selected=sel.value;
   const parts=(db.partsCatalog||[]).filter(p=>p.active!==false).slice().sort((a,b)=>a.name.localeCompare(b.name));
-  sel.innerHTML=`<option value="">${t("choosePart")}</option>`+parts.map(p=>`<option value="${p.id}">${esc(p.name)}${p.partNo?` · ${esc(p.partNo)}`:""} · ${money(p.cost||0)}</option>`).join("");
+  sel.innerHTML=`<option value="">${t("choosePart")}</option>`+parts.map(p=>{const sell=Number(p.listPrice)||Number(p.cost)||0;return `<option value="${p.id}">${esc(p.name)}${p.partNo?` · ${esc(p.partNo)}`:""} · ${money(sell)}</option>`}).join("");
   if(parts.some(p=>p.id===selected))sel.value=selected;
 }
 function populateRepairServiceSelect(){
@@ -1808,7 +2012,7 @@ function populateRepairServiceSelect(){
   if(!sel)return;
   const selected=sel.value;
   const items=(db.serviceCatalog||[]).filter(x=>x.active!==false).slice().sort((a,b)=>a.name.localeCompare(b.name));
-  sel.innerHTML=`<option value="">${t("chooseService")}</option>`+items.map(x=>`<option value="${x.id}">${esc(x.name)}${x.unit?` · ${esc(x.unit)}`:""} · ${money(x.cost||0)}</option>`).join("");
+  sel.innerHTML=`<option value="">${t("chooseService")}</option>`+items.map(x=>`<option value="${x.id}">${esc(x.name)}${x.unit?` · ${esc(serviceUnitText(x.unit))}`:""} · ${money(x.cost||0)}</option>`).join("");
   if(items.some(x=>x.id===selected))sel.value=selected;
 }
 function repairServiceSubtotal(){
@@ -1824,7 +2028,7 @@ function renderRepairServicesDraft(){
     <thead><tr><th>${currentLang==="hu"?"Tétel":"Charge"}</th><th>${currentLang==="hu"?"Egység":"Unit"}</th><th>${t("qty")}</th><th>${t("unitPrice")}</th><th>${t("lineTotal")}</th><th></th></tr></thead>
     <tbody>${repairServicesDraft.map(x=>`<tr>
       <td><b>${esc(x.name)}</b>${x.code?`<div class="sub">${esc(x.code)}</div>`:""}</td>
-      <td>${esc(x.unit||"—")}</td>
+      <td>${esc(x.unit?serviceUnitText(x.unit):"—")}</td>
       <td style="width:90px"><input type="number" min="0.01" step="0.25" value="${Number(x.qty)||1}" onchange="updateRepairServiceQty('${x.id}',this.value)"></td>
       <td style="width:135px"><input type="number" min="0" step="1" value="${Number(x.unitCost)||0}" onchange="updateRepairServiceCost('${x.id}',this.value)"></td>
       <td style="white-space:nowrap;font-weight:800">${money((Number(x.unitCost)||0)*(Number(x.qty)||0))}</td>
@@ -1845,8 +2049,12 @@ function removeRepairService(id){
   repairServicesDraft=repairServicesDraft.filter(x=>x.id!==id);
   renderRepairServicesDraft();
 }
+function repairPartPurchasePrice(p){
+  if(p.purchaseCost!=="" && p.purchaseCost!=null)return Number(p.purchaseCost)||0;
+  return Number(p.unitCost)||0; // compatibility with older repair records
+}
 function repairPartSubtotal(){
-  return repairPartsDraft.reduce((sum,p)=>sum+(Number(p.unitCost)||0)*(Number(p.qty)||0),0);
+  return repairPartsDraft.reduce((sum,p)=>sum+repairPartPurchasePrice(p)*(Number(p.qty)||0),0);
 }
 function calculateRepairCost(){
   const parts=repairPartSubtotal();
@@ -1871,12 +2079,13 @@ function renderRepairPartsDraft(){
     calculateRepairCost();return;
   }
   wrap.innerHTML=`<table class="repair-parts-table">
-    <thead><tr><th>${t("part")}</th><th>${t("qty")}</th><th>${t("unitPrice")}</th><th>${t("lineTotal")}</th><th></th></tr></thead>
+    <thead><tr><th>${t("part")}</th><th>${t("qty")}</th><th>${t("purchaseNet")}</th><th>${t("listNet")}</th><th>${t("lineTotal")}</th><th></th></tr></thead>
     <tbody>${repairPartsDraft.map(p=>`<tr>
       <td><b>${esc(p.name)}</b>${p.partNo?`<div class="sub">${esc(p.partNo)}</div>`:""}</td>
-      <td style="width:90px"><input type="number" min="0.01" step="1" value="${Number(p.qty)||1}" onchange="updateRepairPartQty('${p.id}',this.value)"></td>
-      <td style="width:135px"><input type="number" min="0" step="1" value="${Number(p.unitCost)||0}" onchange="updateRepairPartCost('${p.id}',this.value)"></td>
-      <td style="white-space:nowrap;font-weight:800">${money((Number(p.unitCost)||0)*(Number(p.qty)||0))}</td>
+      <td style="width:85px"><input type="number" min="0.01" step="1" value="${Number(p.qty)||1}" onchange="updateRepairPartQty('${p.id}',this.value)"></td>
+      <td style="width:145px"><input type="number" min="0" step="1" value="${repairPartPurchasePrice(p)}" onchange="updateRepairPartPurchaseCost('${p.id}',this.value)"></td>
+      <td style="width:145px"><input type="number" min="0" step="1" value="${p.listPrice===""||p.listPrice==null?"":Number(p.listPrice)||0}" placeholder="—" onchange="updateRepairPartListPrice('${p.id}',this.value)"></td>
+      <td style="white-space:nowrap;font-weight:800">${money(repairPartPurchasePrice(p)*(Number(p.qty)||0))}</td>
       <td><button class="btn small danger" type="button" onclick="removeRepairPart('${p.id}')">${t("remove")}</button></td>
     </tr>`).join("")}</tbody>
   </table>`;
@@ -1886,18 +2095,36 @@ function updateRepairPartQty(id,value){
   const p=repairPartsDraft.find(x=>x.id===id);if(!p)return;
   p.qty=Math.max(.01,Number(value)||1);renderRepairPartsDraft();
 }
-function updateRepairPartCost(id,value){
+function updateRepairPartPurchaseCost(id,value){
   const p=repairPartsDraft.find(x=>x.id===id);if(!p)return;
-  p.unitCost=Math.max(0,Number(value)||0);renderRepairPartsDraft();
+  const cost=Math.max(0,Number(value)||0);
+  p.purchaseCost=cost;
+  p.unitCost=cost; // retained for backwards compatibility with older JSON versions
+  renderRepairPartsDraft();
+}
+function updateRepairPartListPrice(id,value){
+  const p=repairPartsDraft.find(x=>x.id===id);if(!p)return;
+  p.listPrice=value===""?"":Math.max(0,Number(value)||0);
+  renderRepairPartsDraft();
 }
 function removeRepairPart(id){repairPartsDraft=repairPartsDraft.filter(x=>x.id!==id);renderRepairPartsDraft()}
+function addKitPreset(code){
+  const u=currentUnit();if(!u)return;const items=kitComponentsFor(u,code);
+  if(!items.length){alert(currentLang==="hu"?"Ehhez a készülékhez nincs használható preset.":"No usable preset for this unit.");return}
+  items.forEach(item=>{const existing=repairPartsDraft.find(p=>p.partNo&&item.partNo&&p.partNo.toUpperCase()===item.partNo.toUpperCase());if(existing)existing.qty=(Number(existing.qty)||0)+(Number(item.qty)||1);else repairPartsDraft.push(item)});
+  renderRepairPartsDraft();
+  if(u.cassetteCount===""||u.cassetteCount==null)toast(currentLang==="hu"?"KIT hozzáadva; a kazettatömítés darabszámát ellenőrizd.":"KIT added; verify cassette seal quantity.");
+  else toast(currentLang==="hu"?`${code} alkatrészei külön tételekként hozzáadva`:`${code} components added as individual parts`);
+}
+$("#addKit3PresetBtn").onclick=()=>addKitPreset("SERVICE-KIT-3");
+$("#addKit4PresetBtn").onclick=()=>addKitPreset("SERVICE-KIT-4");
 $("#addRepairPartBtn").onclick=()=>{
   const id=$("#rPartSelect").value;if(!id)return;
   const src=(db.partsCatalog||[]).find(p=>p.id===id);if(!src)return;
   const qty=Math.max(.01,Number($("#rPartQty").value)||1);
   const existing=repairPartsDraft.find(p=>p.catalogId===src.id);
   if(existing)existing.qty=(Number(existing.qty)||0)+qty;
-  else repairPartsDraft.push({id:uid("usedpart"),catalogId:src.id,name:src.name,partNo:src.partNo||"",unitCost:Number(src.cost)||0,qty});
+  else {const purchaseCost=Number(src.cost)||0,listPrice=src.listPrice===""||src.listPrice==null?"":Number(src.listPrice)||0;repairPartsDraft.push({id:uid("usedpart"),catalogId:src.id,name:src.name,partNo:src.partNo||"",purchaseCost,listPrice,unitCost:purchaseCost,qty})}
   $("#rPartQty").value=1;renderRepairPartsDraft();
 };
 $("#addRepairServiceBtn").onclick=()=>{
@@ -1919,7 +2146,7 @@ function openRepairModal(repair=null){
   const u=currentUnit();if(!u){alert(currentLang==="hu"?"Előbb mentsd el a berendezést.":"Save the unit first.");return}
   editingRepairId=repair?.id||null;
   $("#repairTitle").textContent=repair?t("editRepair"):t("repairTitle");
-  $("#rEventType").value=repair?.eventType||"Repair";$("#rDate").value=repair?.date||todayISO();$("#rStatus").value=repair?.status||"Open";$("#rTech").value=repair?.technician||u.technician||"";
+  $("#rEventType").value=repair?.eventType||"Repair";$("#rDate").value=repair?.date||todayISO();$("#rStatus").value=repair?.status||"Open";$("#rRepairLocation").value=repair?.repairLocation||u.repairLocation||"";$("#rTech").value=repair?.technician||u.technician||"";
   $("#rDone").value=repair?.completedDate||"";$("#rJob").value=repair?.jobNo||"";
   $("#rNotes").value=repair?.notes||"";$("#rParts").value=repair?.parts||"";
   repairPartsDraft=structuredClone(repair?.partsUsed||[]);
@@ -1936,12 +2163,12 @@ $("#rStatus").onchange=()=>{if($("#rStatus").value==="Completed"&&!$("#rDone").v
 $("#saveRepairBtn").onclick=()=>{
   const u=currentUnit();if(!u)return;
   const total=calculateRepairCost();
-  const data={id:editingRepairId||uid("repair"),eventType:$("#rEventType").value||"Repair",date:$("#rDate").value||todayISO(),status:$("#rStatus").value,technician:$("#rTech").value.trim(),
+  const data={id:editingRepairId||uid("repair"),eventType:$("#rEventType").value||"Repair",date:$("#rDate").value||todayISO(),status:$("#rStatus").value,technician:$("#rTech").value.trim(),repairLocation:$("#rRepairLocation").value,
     completedDate:$("#rDone").value,jobNo:$("#rJob").value.trim(),cost:Math.round(total),notes:$("#rNotes").value.trim(),parts:$("#rParts").value.trim(),
     partsUsed:structuredClone(repairPartsDraft),servicesUsed:structuredClone(repairServicesDraft),
     laborHours:Number($("#rLaborHours").value)||0,hourlyRate:Number($("#rHourlyRate").value)||0,
     otherCost:Number($("#rOtherCost").value)||0,costNote:$("#rCostNote").value.trim(),updatedAt:new Date().toISOString()};
-  u.repairs=u.repairs||[];const i=u.repairs.findIndex(x=>x.id===editingRepairId);if(i>=0)u.repairs[i]=data;else u.repairs.push(data);
+  u.repairs=u.repairs||[];const i=u.repairs.findIndex(x=>x.id===editingRepairId);if(i>=0)u.repairs[i]=data;else u.repairs.push(data);if(data.repairLocation)u.repairLocation=data.repairLocation;
   u.updatedAt=new Date().toISOString();changed();fillUnit(u);switchTab("repairs");closeModal("repairModal");toast(currentLang==="hu"?"Javítás mentve":"Repair saved");
 };
 function editRepair(id){const u=currentUnit(),r=u?.repairs?.find(x=>x.id===id);if(r)openRepairModal(r)}
@@ -1967,7 +2194,7 @@ function renderRepairs(u){
     const laborInfo=Number(r.laborHours)>0?`${Number(r.laborHours)} ${t("hoursShort")} × ${money(r.hourlyRate||0)}`:"";
     return `<div class="history-item">
       <div class="history-top"><strong>${fmt(r.date)} · ${esc(repairEventText(r.eventType||"Repair"))}${r.jobNo?` · ${esc(r.jobNo)}`:""}</strong><span class="badge ${["Completed","Cancelled"].includes(r.status)?"ok":"repair"}">${esc(repairStatusText(r.status))}</span></div>
-      <div class="sub">${esc(r.technician||t("noTechnician"))}${r.completedDate?` · ${currentLang==="hu"?"befejezve":"completed"} ${fmt(r.completedDate)}`:""}${r.cost!==""&&r.cost!=null?` · <b>${money(r.cost)}</b>`:""}</div>
+      <div class="sub">${esc(r.technician||t("noTechnician"))}${r.repairLocation?` · ${esc(repairLocationText(r.repairLocation))}`:""}${r.completedDate?` · ${currentLang==="hu"?"befejezve":"completed"} ${fmt(r.completedDate)}`:""}${r.cost!==""&&r.cost!=null?` · <b>${money(r.cost)}</b>`:""}</div>
       ${r.notes?`<div class="history-body"><b>${currentLang==="hu"?"Hiba / munka":"Fault / work"}:</b> ${esc(r.notes)}</div>`:""}
       ${partsSummary?`<div class="history-body"><b>${t("partsSummary")}:</b> ${partsSummary}</div>`:""}
       ${serviceSummary?`<div class="history-body"><b>${t("serviceSummary")}:</b> ${serviceSummary}</div>`:""}
@@ -1984,15 +2211,15 @@ const dz=$("#dropZone"), pi=$("#photoInput");
 dz.onclick=()=>pi.click(); dz.ondragover=e=>{e.preventDefault();dz.classList.add("drag")};dz.ondragleave=()=>dz.classList.remove("drag");
 dz.ondrop=e=>{e.preventDefault();dz.classList.remove("drag");handlePhotos(e.dataTransfer.files)};pi.onchange=()=>handlePhotos(pi.files);
 async function handlePhotos(files){
-  const u=currentUnit();if(!u){alert("Save unit before adding photos.");return}
+  const u=currentUnit();if(!u){alert(currentLang==="hu"?"Fotó hozzáadása előtt mentsd a berendezést.":"Save unit before adding photos.");return}
   for(const f of [...files]){
     if(!f.type.startsWith("image/"))continue;
     try{
       const dataUrl=await compressImage(f,1600,.72);
       u.photos=u.photos||[];u.photos.push({id:uid("photo"),name:f.name,caption:"",dataUrl,addedAt:new Date().toISOString()});
-    }catch(e){console.error(e);alert("Could not process "+f.name)}
+    }catch(e){console.error(e);alert((currentLang==="hu"?"Nem sikerült feldolgozni: ":"Could not process ")+f.name)}
   }
-  u.updatedAt=new Date().toISOString();changed();renderUnitSubsections(u);switchTab("photos");pi.value="";toast("Photos added and compressed");
+  u.updatedAt=new Date().toISOString();changed();renderUnitSubsections(u);switchTab("photos");pi.value="";toast(currentLang==="hu"?"Fotók hozzáadva és tömörítve":"Photos added and compressed");
 }
 function compressImage(file,maxDim,quality){
   return new Promise((resolve,reject)=>{
@@ -2006,22 +2233,24 @@ function compressImage(file,maxDim,quality){
   });
 }
 function photoCaption(id,val){const u=currentUnit(),p=u?.photos?.find(x=>x.id===id);if(p){p.caption=val;localSave()}}
-function deletePhoto(id){const u=currentUnit();if(!u||!confirm("Remove this photo from the unit and JSON database?"))return;u.photos=u.photos.filter(x=>x.id!==id);changed();renderUnitSubsections(u);switchTab("photos")}
+function deletePhoto(id){const u=currentUnit();if(!u||!confirm(currentLang==="hu"?"Eltávolítod ezt a fotót a berendezésből és az adatbázisból?":"Remove this photo from the unit and database?"))return;u.photos=u.photos.filter(x=>x.id!==id);changed();renderUnitSubsections(u);switchTab("photos")}
 function openPhoto(id){const p=currentUnit()?.photos?.find(x=>x.id===id);if(p){const w=window.open();w.document.write(`<img src="${p.dataUrl}" style="max-width:100%;height:auto">`)}}
 function renderPhotos(u){
   $("#gallery").innerHTML=(u.photos||[]).length?(u.photos||[]).map(p=>`<div class="photo">
-    <img src="${p.dataUrl}" onclick="openPhoto('${p.id}')" title="Click to enlarge">
-    <div class="cap"><input value="${esc(p.caption||"")}" placeholder="Photo caption..." oninput="photoCaption('${p.id}',this.value)"></div>
-    <div class="photo-actions"><button class="btn small ghost" onclick="openPhoto('${p.id}')">View</button><button class="btn small danger" onclick="deletePhoto('${p.id}')">Delete</button></div>
+    <img src="${p.dataUrl}" onclick="openPhoto('${p.id}')" title="${esc(t("clickEnlarge"))}">
+    <div class="cap"><input value="${esc(p.caption||"")}" placeholder="${esc(t("photoCaption"))}" oninput="photoCaption('${p.id}',this.value)"></div>
+    <div class="photo-actions"><button class="btn small ghost" onclick="openPhoto('${p.id}')">${t("view")}</button><button class="btn small danger" onclick="deletePhoto('${p.id}')">${t("delete")}</button></div>
   </div>`).join(""):`<div class="empty" style="grid-column:1/-1">${t("noPhotos")}</div>`;
 }
 function renderTimeline(u){
-  const rows=[];
-  (u.checkups||[]).forEach(c=>rows.push({date:c.date,type:`${c.type} ${currentLang==="hu"?"havi felülvizsgálat":"month checkup"}`,details:[c.cycleCount!==""&&c.cycleCount!=null?`${t("checkCycles")}: ${c.cycleCount}`:"",c.notes||c.jobNo||c.result].filter(Boolean).join(" · "),who:[c.technician,c.result].filter(Boolean).join(" · ")}));
-  (u.repairs||[]).forEach(r=>rows.push({date:r.completedDate||r.date,type:repairEventText(r.eventType||"Repair"),details:r.notes||r.parts||r.jobNo,who:[r.technician,repairStatusText(r.status)].filter(Boolean).join(" · ")}));
-  (u.photos||[]).forEach(p=>rows.push({date:(p.addedAt||"").slice(0,10),type:"Photo",details:p.caption||p.name,who:""}));
-  rows.sort((a,b)=>(b.date||"").localeCompare(a.date||""));
-  $("#timeline").innerHTML=rows.length?rows.map(r=>`<tr><td>${fmt(r.date)}</td><td>${esc(r.type)}</td><td>${esc(r.details||"—")}</td><td>${esc(r.who||"—")}</td></tr>`).join(""):'<tr><td colspan="4">No history yet.</td></tr>';
+  const rows=[],checkDates=new Set((u.checkups||[]).map(c=>c.date).filter(Boolean)),repairDates=new Set((u.repairs||[]).map(r=>r.completedDate||r.date).filter(Boolean));
+  const sameDay=new Set([...checkDates].filter(d=>repairDates.has(d)));
+  (u.checkups||[]).forEach(c=>{const linked=!!c.linkedRepairId||sameDay.has(c.date);rows.push({date:c.date,sortAt:c.createdAt||c.date||"",kind:"checkup",linked,type:`${c.type} ${currentLang==="hu"?"havi felülvizsgálat":"month checkup"}`,details:[c.cycleCount!==""&&c.cycleCount!=null?`${t("checkCycles")}: ${c.cycleCount}`:"",c.notes||c.jobNo||c.result].filter(Boolean).join(" · "),who:[c.technician,c.result].filter(Boolean).join(" · ")})});
+  (u.repairs||[]).forEach(r=>{const d=r.completedDate||r.date,linked=!!r.sourceCheckId||sameDay.has(d);rows.push({date:d,sortAt:r.updatedAt||d||"",kind:"repair",linked,type:repairEventText(r.eventType||"Repair"),details:[r.repairLocation?repairLocationText(r.repairLocation):"",r.notes||r.parts||r.jobNo].filter(Boolean).join(" · "),who:[r.technician,repairStatusText(r.status)].filter(Boolean).join(" · ")})});
+  (u.workflowHistory||[]).forEach(w=>rows.push({date:w.date,sortAt:w.at||w.date||"",kind:"status",linked:false,type:currentLang==="hu"?"Állapotváltozás":"Status change",details:`${w.from?workflowStatusText(w.from)+" → ":""}${workflowStatusText(w.status)}${w.note?` · ${w.note}`:""}`,who:w.by||""}));
+  (u.photos||[]).forEach(p=>rows.push({date:(p.addedAt||"").slice(0,10),sortAt:p.addedAt||"",kind:"photo",linked:false,type:t("photo"),details:p.caption||p.name,who:""}));
+  rows.sort((a,b)=>(b.date||"").localeCompare(a.date||"")||(b.sortAt||"").localeCompare(a.sortAt||""));
+  $("#timeline").innerHTML=rows.length?rows.map(r=>{const cls=r.kind==="status"?"timeline-status":r.linked?"timeline-linked":"",badge=r.linked?`<span class="timeline-link-badge">${currentLang==="hu"?"Felülvizsgálat + javítás":"Inspection + repair"}</span>`:"";return `<tr class="${cls}"><td>${fmt(r.date)}</td><td>${esc(r.type)}${badge}</td><td>${esc(r.details||"—")}</td><td>${esc(r.who||"—")}</td></tr>`}).join(""):`<tr><td colspan="4">${t("noHistory")}</td></tr>`;
 }
 function renderUnitSubsections(u){renderChecks(u);renderRepairs(u);renderPhotos(u);renderTimeline(u)}
 
@@ -2110,7 +2339,7 @@ function renderServiceCatalog(){
   const items=(db.serviceCatalog||[]).slice().sort((a,b)=>a.name.localeCompare(b.name));
   list.innerHTML=items.length?items.map(x=>`<div class="catalog-row">
     <div><b>${esc(x.name)}</b>${x.active===false?` <span class="badge">${t("inactive")}</span>`:""}${x.code?`<div class="sub">${esc(x.code)}</div>`:""}${x.notes?`<div class="sub">${esc(x.notes)}</div>`:""}</div>
-    <div class="sub">${esc(x.unit||"—")}</div>
+    <div class="sub">${esc(x.unit?serviceUnitText(x.unit):"—")}</div>
     <div class="price">${money(x.cost||0)}</div>
     <div class="location-actions"><button class="btn small ghost" onclick="editCatalogService('${x.id}')">${currentLang==="hu"?"Szerkesztés":"Edit"}</button><button class="btn small danger" onclick="deleteCatalogService('${x.id}')">${currentLang==="hu"?"Törlés":"Delete"}</button></div>
   </div>`).join(""):`<div class="empty">${t("noSavedServices")}</div>`;
@@ -2118,20 +2347,20 @@ function renderServiceCatalog(){
 
 function clearCatalogPartForm(){
   editingCatalogPartId=null;
-  $("#catalogPartName").value="";$("#catalogPartNo").value="";$("#catalogPartCost").value="";$("#catalogPartSupplier").value="";$("#catalogPartNotes").value="";$("#catalogPartActive").checked=true;
+  $("#catalogPartName").value="";$("#catalogPartNo").value="";$("#catalogPartCost").value="";$("#catalogPartListPrice").value="";$("#catalogPartSupplier").value="";$("#catalogPartNotes").value="";$("#catalogPartActive").checked=true;
   $("#saveCatalogPartBtn").textContent=t("addPart");$("#cancelCatalogEditBtn").style.display="none";
 }
 $("#cancelCatalogEditBtn").onclick=clearCatalogPartForm;
 $("#saveCatalogPartBtn").onclick=()=>{
   const name=$("#catalogPartName").value.trim();
   if(!name){alert(currentLang==="hu"?"Az alkatrész neve kötelező.":"Part name is required.");return}
-  const partNo=$("#catalogPartNo").value.trim(),cost=Math.max(0,Number($("#catalogPartCost").value)||0),supplier=$("#catalogPartSupplier").value.trim(),notes=$("#catalogPartNotes").value.trim(),active=$("#catalogPartActive").checked;
+  const partNo=$("#catalogPartNo").value.trim(),cost=Math.max(0,Number($("#catalogPartCost").value)||0),listPrice=$("#catalogPartListPrice").value===""?"":Math.max(0,Number($("#catalogPartListPrice").value)||0),supplier=$("#catalogPartSupplier").value.trim(),notes=$("#catalogPartNotes").value.trim(),active=$("#catalogPartActive").checked;
   db.partsCatalog=db.partsCatalog||[];
   if(editingCatalogPartId){
     const p=db.partsCatalog.find(x=>x.id===editingCatalogPartId);if(!p)return;
-    p.name=name;p.partNo=partNo;p.cost=cost;p.supplier=supplier;p.notes=notes;p.active=active;p.updatedAt=new Date().toISOString();
+    p.name=name;p.partNo=partNo;p.cost=cost;p.listPrice=listPrice;p.supplier=supplier;p.notes=notes;p.active=active;p.updatedAt=new Date().toISOString();
   }else{
-    db.partsCatalog.push({id:uid("part"),name,partNo,cost,supplier,notes,active,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});
+    db.partsCatalog.push({id:uid("part"),name,partNo,cost,listPrice,supplier,notes,active,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});
   }
   localSave();if(cloudReady)queueCloudSave();clearCatalogPartForm();renderPartCatalog();populateRepairPartSelect();
   toast(currentLang==="hu"?"Alkatrész mentve":"Part saved");
@@ -2139,7 +2368,7 @@ $("#saveCatalogPartBtn").onclick=()=>{
 function editCatalogPart(id){
   const p=(db.partsCatalog||[]).find(x=>x.id===id);if(!p)return;
   editingCatalogPartId=id;
-  $("#catalogPartName").value=p.name||"";$("#catalogPartNo").value=p.partNo||"";$("#catalogPartCost").value=p.cost??0;$("#catalogPartSupplier").value=p.supplier||"";$("#catalogPartNotes").value=p.notes||"";$("#catalogPartActive").checked=p.active!==false;
+  $("#catalogPartName").value=p.name||"";$("#catalogPartNo").value=p.partNo||"";$("#catalogPartCost").value=p.cost??0;$("#catalogPartListPrice").value=p.listPrice??"";$("#catalogPartSupplier").value=p.supplier||"";$("#catalogPartNotes").value=p.notes||"";$("#catalogPartActive").checked=p.active!==false;
   $("#saveCatalogPartBtn").textContent=t("savePart");$("#cancelCatalogEditBtn").style.display="";
 }
 function deleteCatalogPart(id){
@@ -2158,8 +2387,8 @@ function renderPartCatalog(){
   const parts=(db.partsCatalog||[]).slice().sort((a,b)=>a.name.localeCompare(b.name));
   list.innerHTML=parts.length?parts.map(p=>`<div class="catalog-row">
     <div><b>${esc(p.name)}</b>${p.active===false?` <span class="badge">${t("inactive")}</span>`:""}${p.partNo?`<div class="sub">${esc(p.partNo)}</div>`:""}${p.supplier?`<div class="sub">${t("partSupplier")}: ${esc(p.supplier)}</div>`:""}${p.notes?`<div class="sub">${esc(p.notes)}</div>`:""}</div>
-    <div class="sub">${currentLang==="hu"?"Egységár":"Unit cost"}</div>
-    <div class="price">${money(p.cost||0)}</div>
+    <div class="sub">${t("purchaseNet")}<br>${t("listNet")}</div>
+    <div class="price">${money(p.cost||0)}<br><span class="sub">${p.listPrice!==""&&p.listPrice!=null?money(p.listPrice):"—"}</span></div>
     <div class="location-actions"><button class="btn small ghost" onclick="editCatalogPart('${p.id}')">${currentLang==="hu"?"Szerkesztés":"Edit"}</button><button class="btn small danger" onclick="deleteCatalogPart('${p.id}')">${currentLang==="hu"?"Törlés":"Delete"}</button></div>
   </div>`).join(""):`<div class="empty">${t("noSavedParts")}</div>`;
 }
@@ -2205,14 +2434,14 @@ $("#manageLocationsBtn").onclick=openLocations;
 $("#manageLocationsSideBtn").onclick=openLocations;
 $("#addHospitalBtn").onclick=()=>{
   const name=$("#locHospitalName").value.trim();
-  if(!name){alert("Hospital name is required.");return}
-  if((db.locations||[]).some(h=>h.name.toLowerCase()===name.toLowerCase())){alert("That hospital already exists.");return}
+  if(!name){alert(currentLang==="hu"?"A kórház neve kötelező.":"Hospital name is required.");return}
+  if((db.locations||[]).some(h=>h.name.toLowerCase()===name.toLowerCase())){alert(currentLang==="hu"?"Ez a kórház már létezik.":"That hospital already exists.");return}
   db.locations=db.locations||[];
   db.locations.push({id:uid("hospital"),name,address:$("#locHospitalAddress").value.trim(),code:$("#locHospitalCode").value.trim(),
     contact:$("#locHospitalContact").value.trim(),contactInfo:$("#locHospitalContactInfo").value.trim(),accountNo:$("#locHospitalAccount").value.trim(),
     notes:$("#locHospitalNotes").value.trim(),wards:[]});
   $("#locHospitalName").value="";$("#locHospitalAddress").value="";$("#locHospitalCode").value="";$("#locHospitalContact").value="";$("#locHospitalContactInfo").value="";$("#locHospitalAccount").value="";$("#locHospitalNotes").value="";
-  changed();renderLocations();toast("Hospital added");
+  changed();renderLocations();toast(currentLang==="hu"?"Kórház hozzáadva":"Hospital added");
 };
 function editHospital(id){
   const h=(db.locations||[]).find(x=>x.id===id);if(!h)return;
@@ -2221,20 +2450,20 @@ function editHospital(id){
 $("#saveHospitalEditBtn").onclick=()=>{
   const h=(db.locations||[]).find(x=>x.id===editingHospitalId);if(!h)return;
   const old=h.name, name=$("#ehName").value.trim();
-  if(!name){alert("Hospital name is required.");return}
-  if((db.locations||[]).some(x=>x.id!==h.id&&x.name.toLowerCase()===name.toLowerCase())){alert("Another hospital already uses that name.");return}
+  if(!name){alert(currentLang==="hu"?"A kórház neve kötelező.":"Hospital name is required.");return}
+  if((db.locations||[]).some(x=>x.id!==h.id&&x.name.toLowerCase()===name.toLowerCase())){alert(currentLang==="hu"?"Ezt a nevet már egy másik kórház használja.":"Another hospital already uses that name.");return}
   h.name=name;h.address=$("#ehAddress").value.trim();h.code=$("#ehCode").value.trim();h.contact=$("#ehContact").value.trim();h.contactInfo=$("#ehContactInfo").value.trim();h.accountNo=$("#ehAccount").value.trim();h.notes=$("#ehNotes").value.trim();
   if(old!==name){
     db.units.forEach(u=>{if(u.hospital===old)u.hospital=name});
     if($("#unitModal").classList.contains("open") && $("#fHospital").value===old) $("#fHospital").value=name;
   }
-  changed();renderLocations();closeModal("editHospitalModal");toast("Hospital updated");
+  changed();renderLocations();closeModal("editHospitalModal");toast(currentLang==="hu"?"Kórház frissítve":"Hospital updated");
 };
 function deleteHospital(id){
   const h=(db.locations||[]).find(x=>x.id===id);if(!h)return;
   const count=db.units.filter(u=>u.hospital===h.name).length;
   if(count){alert(`This hospital still has ${count} linked unit(s). Move or archive/delete those units before deleting the hospital.`);return}
-  if(confirm(`Delete "${h.name}" and its ward list?`)){db.locations=db.locations.filter(x=>x.id!==id);changed();renderLocations();toast("Hospital deleted")}
+  if(confirm(currentLang==="hu"?`Törlöd a(z) "${h.name}" kórházat és az osztálylistáját?`:`Delete "${h.name}" and its ward list?`)){db.locations=db.locations.filter(x=>x.id!==id);changed();renderLocations();toast(currentLang==="hu"?"Kórház törölve":"Hospital deleted")}
 }
 function openWardModal(hospitalId,wardId=null){
   const h=(db.locations||[]).find(x=>x.id===hospitalId);if(!h)return;
@@ -2247,9 +2476,9 @@ function openWardModal(hospitalId,wardId=null){
 }
 $("#saveWardBtn").onclick=()=>{
   const h=(db.locations||[]).find(x=>x.id===editingWardHospitalId);if(!h)return;
-  const name=$("#wardName").value.trim();if(!name){alert("Ward / department name is required.");return}
+  const name=$("#wardName").value.trim();if(!name){alert(currentLang==="hu"?"Az osztály neve kötelező.":"Ward / department name is required.");return}
   h.wards=h.wards||[];
-  if(h.wards.some(w=>w.id!==editingWardId&&w.name.toLowerCase()===name.toLowerCase())){alert("That ward already exists in this hospital.");return}
+  if(h.wards.some(w=>w.id!==editingWardId&&w.name.toLowerCase()===name.toLowerCase())){alert(currentLang==="hu"?"Ez az osztály már létezik ennél a kórháznál.":"That ward already exists in this hospital.");return}
   if(editingWardId){
     const w=h.wards.find(x=>x.id===editingWardId);const old=w.name;
     w.name=name;w.location=$("#wardLocation").value.trim();w.contact=$("#wardContact").value.trim();w.contactInfo=$("#wardContactInfo").value.trim();w.notes=$("#wardNotes").value.trim();
@@ -2266,7 +2495,7 @@ function deleteWard(hospitalId,wardId){
   const h=(db.locations||[]).find(x=>x.id===hospitalId),w=h?.wards?.find(x=>x.id===wardId);if(!h||!w)return;
   const count=db.units.filter(u=>u.hospital===h.name&&u.department===w.name).length;
   if(count){alert(`This ward still has ${count} linked unit(s). Move those units to another ward before deleting it.`);return}
-  if(confirm(`Delete ward "${w.name}"?`)){h.wards=h.wards.filter(x=>x.id!==wardId);changed();renderLocations();toast("Ward deleted")}
+  if(confirm(currentLang==="hu"?`Törlöd ezt az osztályt: "${w.name}"?`:`Delete ward "${w.name}"?`)){h.wards=h.wards.filter(x=>x.id!==wardId);changed();renderLocations();toast(currentLang==="hu"?"Osztály törölve":"Ward deleted")}
 }
 
 /* JSON / CSV */
@@ -2395,7 +2624,7 @@ function mergeParts(target,incoming){
     let p=target.find(x=>(pn && mergeNorm(x.partNo)===pn) || (!pn && nm && mergeNorm(x.name)===nm));
 
     if(!p){
-      if(!ip.id)ip.id=uid("part");
+      if(!ip.id)ip.id=uid("part");if(ip.listPrice==null)ip.listPrice="";
       if(ip.cost>0){
         ip.priceHistory=Array.isArray(ip.priceHistory)?ip.priceHistory:[];
         const ph={
@@ -2480,8 +2709,9 @@ function mergeParts(target,incoming){
       if(!p.priceSource && ip.priceSource){p.priceSource=ip.priceSource;touched=true}
     }
 
+    if(ip.listPrice!==undefined&&ip.listPrice!==""&&Number(ip.listPrice)>=0){const incomingList=Number(ip.listPrice)||0,currentList=p.listPrice===""||p.listPrice==null?null:Number(p.listPrice)||0;if(currentList===null||incomingIsNewer){p.listPrice=incomingList;touched=true}}
     // Fill other genuinely missing scalar metadata, but never overwrite populated values.
-    fillMissingScalars(p,ip,new Set(["id","name","cost","notes","aliases","priceHistory","priceAsOf","priceSource"]));
+    fillMissingScalars(p,ip,new Set(["id","name","cost","listPrice","notes","aliases","priceHistory","priceAsOf","priceSource"]));
 
     if(touched){
       p.updatedAt=new Date().toISOString();
@@ -2556,6 +2786,7 @@ function mergeDatabases(base,incoming){
     let m=mergeHistory(match.checkups,iu.checkups,"checkup");match.checkups=m.array;report.newCheckups+=m.added;
     m=mergeHistory(match.repairs,iu.repairs,"repair");match.repairs=m.array;report.newRepairs+=m.added;
     m=mergeHistory(match.photos,iu.photos,"photo");match.photos=m.array;report.newPhotos+=m.added;
+    match.workflowHistory=Array.isArray(match.workflowHistory)?match.workflowHistory:[];for(const w of (Array.isArray(iu.workflowHistory)?iu.workflowHistory:[])){const exists=match.workflowHistory.some(x=>(w.id&&x.id===w.id)||(!w.id&&x.date===w.date&&x.status===w.status&&String(x.note||"")===String(w.note||"")));if(!exists)match.workflowHistory.push(cloneJson(w))}
   }
 
   let m=mergeLocations(merged.locations,incoming.locations);
@@ -2572,7 +2803,7 @@ function mergeDatabases(base,incoming){
 
   // Merge means additive: keep current shared DB identity/settings.
   merged.databaseName=base.databaseName;
-  merged.settings=cloneJson(base.settings||{hourlyRate:0});
+  merged.settings=cloneJson(base.settings||{hourlyRate:19900});
   merged.version=APP_VERSION;
   merged.exportedAt=new Date().toISOString();
   return {merged,report};
@@ -2683,7 +2914,7 @@ async function loadJsonFile(f,keepHandle){
     }else{
       toast(keepHandle?"JSON opened":"JSON database loaded");
     }
-  }catch(e){alert("Could not open JSON: "+e.message)}
+  }catch(e){alert((currentLang==="hu"?"Nem sikerült megnyitni a JSON-t: ":"Could not open JSON: ")+e.message)}
 }
 $("#saveJsonBtn").onclick=saveJSON;
 async function saveJSON(){
@@ -2692,39 +2923,38 @@ async function saveJSON(){
   const safe=(db.databaseName||"mediola_statim").replace(/[^\w\-]+/g,"_");
   try{
     if(fileHandle){
-      const w=await fileHandle.createWritable();await w.write(text);await w.close();toast("JSON database updated");return;
+      const w=await fileHandle.createWritable();await w.write(text);await w.close();toast(currentLang==="hu"?"JSON adatbázis frissítve":"JSON database updated");return;
     }
     if(window.showSaveFilePicker){
       fileHandle=await showSaveFilePicker({suggestedName:safe+".json",types:[{description:"JSON database",accept:{"application/json":[".json"]}}]});
-      const w=await fileHandle.createWritable();await w.write(text);await w.close();toast("JSON database saved — future saves update this file");return;
+      const w=await fileHandle.createWritable();await w.write(text);await w.close();toast(currentLang==="hu"?"JSON adatbázis mentve — a következő mentések ezt a fájlt frissítik":"JSON database saved — future saves update this file");return;
     }
   }catch(e){
     if(e.name==="AbortError")return;
     console.warn(e);
     fileHandle=null;
   }
-  downloadBlob(new Blob([text],{type:"application/json"}),safe+".json");toast("JSON database downloaded");
+  downloadBlob(new Blob([text],{type:"application/json"}),safe+".json");toast(currentLang==="hu"?"JSON adatbázis letöltve":"JSON database downloaded");
 }
 function downloadBlob(blob,name){const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1500)}
 $("#csvBtn").onclick=()=>{
-  const rows=[["Mediola Unit ID","Equipment Status","Hospital","Department","Location","Manufacturer","STATIM Type","Model/Product No","Serial","Asset No",
-    "Manufacturing","Acquisition/Installation","Current Cycles","Cycle Date","Current Software","Interface Firmware","Accessories","Cassette Count","Maintenance Profile",
-    "6m Last","6m Next","6m Last Cycle","6m Next Cycle","12m Last","12m Next","Open Repairs","Technician","Internal/Legacy Tag","Notes","Legacy Notes","Archived"]];
-  db.units.forEach(u=>rows.push([u.unitId,u.status,u.hospital,u.department,u.location,u.manufacturer,u.type||u.model,u.productNo,u.serial,u.assetNo,
-    u.manufactured,u.installed,u.cycleCount,u.cycleCountDate,u.software,u.interfaceFirmware,u.accessories,u.cassetteCount,u.maintenanceProfile,
-    u.schedules?.six?.last,u.schedules?.six?.next,u.schedules?.six?.lastCycle,u.schedules?.six?.nextCycle,u.schedules?.twelve?.last,u.schedules?.twelve?.next,openRepairs(u).length,u.technician,u.tag,u.notes,u.legacyNotes,u.archived?"Yes":"No"]));
-  const csv=rows.map(r=>r.map(v=>`"${String(v??"").replace(/"/g,'""')}"`).join(",")).join("\r\n");
-  downloadBlob(new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8"}),"mediola_statim_units.csv");
+  const rows=[["Mediola Unit ID","Equipment Status","Workflow Status","Hospital","Department","Location","Manufacturer","STATIM Type","Model/Product No","Serial","Asset/Inventory No","Identifier/Delivery Note No","Hospital Order No","NaturaSoft No","Repair Location","Mediola Delivery Note No","Delivery Date","Mediola Invoice No","Invoice Date","Manufacturing","Acquisition/Installation","Current Cycles","Cycle Date","Current Software","Interface Firmware","Accessories","Cassette Count","Maintenance Profile","Repair Completed","Pricing Completed","Quote Sent","Order Received","Shipped","Invoiced","6m Last","6m Next","6m Last Cycle","6m Next Cycle","12m Last","12m Next","Open Repairs","Technician","Internal/Legacy Tag","Notes","Legacy Notes","Archived"]];
+  db.units.forEach(u=>rows.push([u.unitId,u.status,workflowStatusText(u.workflowStatus||""),u.hospital,u.department,u.location,u.manufacturer,u.type||u.model,u.productNo,u.serial,u.assetNo,u.customerIdentifierNo,u.hospitalOrderNo,u.naturasoftNo,repairLocationText(u.repairLocation||""),u.mediolaDeliveryNo,u.mediolaDeliveryDate,u.mediolaInvoiceNo,u.mediolaInvoiceDate,u.manufactured,u.installed,u.cycleCount,u.cycleCountDate,u.software,u.interfaceFirmware,u.accessories,u.cassetteCount,u.maintenanceProfile,u.workflowMilestones?.repairCompleted,u.workflowMilestones?.pricingCompleted,u.workflowMilestones?.quoteSent,u.workflowMilestones?.orderReceived,u.workflowMilestones?.shipped,u.workflowMilestones?.invoiced,u.schedules?.six?.last,u.schedules?.six?.next,u.schedules?.six?.lastCycle,u.schedules?.six?.nextCycle,u.schedules?.twelve?.last,u.schedules?.twelve?.next,openRepairs(u).length,u.technician,u.tag,u.notes,u.legacyNotes,u.archived?"Yes":"No"]));
+  const csv=rows.map(r=>r.map(v=>`"${String(v??"").replace(/"/g,'""')}"`).join(",")).join("\r\n");downloadBlob(new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8"}),"mediola_statim_units.csv");
 };
 
 /* Filters/events */
-["search","departmentFilter","intervalFilter","dueFilter","repairFilter","unitStatusFilter","archiveFilter","sortBy"].forEach(id=>$("#"+id).addEventListener(id==="search"?"input":"change",render));
+["search","departmentFilter","intervalFilter","dueFilter","repairFilter","workflowFilter","unitStatusFilter","archiveFilter","sortBy"].forEach(id=>$("#"+id).addEventListener(id==="search"?"input":"change",render));
 $("#hospitalFilter").onchange=()=>{rebuildFilters();render()};
 $("#dbName").onchange=()=>{db.databaseName=$("#dbName").value;localSave();if(cloudReady)queueCloudSave()};
 $$("[data-quick]").forEach(b=>b.onclick=()=>{
   const q=b.dataset.quick;$("#dueFilter").value=q==="overdue"?"overdue":q==="30"?"30":"all";$("#repairFilter").value=q==="repair"?"open":"";
-  $$("#aside .seg button").forEach?.(()=>{});
   $$(".seg button").forEach(x=>x.classList.toggle("active",x===b));render();
+});
+$$("[data-workflow-quick]").forEach(b=>b.onclick=()=>{
+  const value=b.dataset.workflowQuick;
+  $("#workflowFilter").value=$("#workflowFilter").value===value?"":value;
+  render();
 });
 
 /* Seed sample helper intentionally not auto-used */
@@ -2762,8 +2992,8 @@ function ensureMaintenanceParts(){
   db.partsCatalog=db.partsCatalog||[];
   required.forEach(([partNo,name])=>{
     let p=db.partsCatalog.find(x=>String(x.partNo||"").toUpperCase()===partNo);
-    if(p){p.name=name;p.partNo=partNo;if(p.active==null)p.active=true}
-    else db.partsCatalog.push({id:uid("part"),name,partNo,cost:0,supplier:"",notes:"Scheduled STATIM maintenance component.",active:true,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});
+    if(p){p.name=name;p.partNo=partNo;if(p.active==null)p.active=true;if(p.listPrice==null)p.listPrice=""}
+    else db.partsCatalog.push({id:uid("part"),name,partNo,cost:0,listPrice:"",supplier:"",notes:"Scheduled STATIM maintenance component.",active:true,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});
   });
 }
 function inferCassetteCount(text){
@@ -2781,74 +3011,35 @@ function inferCassetteCount(text){
 }
 
 function normalizeDB(){
-  db.units=db.units||[];
-  db.settings=db.settings||{hourlyRate:0};
-  if(db.settings.hourlyRate==null)db.settings.hourlyRate=0;
+  db.version=APP_VERSION;db.units=db.units||[];db.settings=db.settings||{hourlyRate:19900};
+  if(db.settings.hourlyRate==null||Number(db.settings.hourlyRate)===0)db.settings.hourlyRate=19900;
   if(!Array.isArray(db.serviceKits)||!db.serviceKits.length)db.serviceKits=builtInServiceKits();
   db.partsCatalog=db.partsCatalog||[];
-  db.partsCatalog.forEach(p=>{p.id=p.id||uid("part");p.cost=Number(p.cost)||0;if(p.supplier==null)p.supplier="";if(p.active==null)p.active=true});
-  if(!Array.isArray(db.serviceCatalog)){
-    db.serviceCatalog=[
-      {id:"service_callout",name:"Kiszállási költség",code:"KISZALLAS",cost:0,unit:"per visit",notes:"",active:true},
-      {id:"service_inspection",name:"Felülvizsgálat",code:"FELULVIZSGALAT",cost:0,unit:"per inspection",notes:"",active:true},
-      {id:"service_diagnostics",name:"Bevizsgálás / diagnosztika",code:"DIAGNOSZTIKA",cost:0,unit:"per job",notes:"",active:true},
-      {id:"service_fixed_labour",name:"Munkadíj (fix)",code:"MUNKADIJ-FIX",cost:0,unit:"per job",notes:"",active:true},
-      {id:"service_km",name:"Kilométerdíj",code:"KM",cost:0,unit:"per km",notes:"",active:true},
-      {id:"service_commissioning",name:"Beüzemelés",code:"BEUZEMELES",cost:0,unit:"per unit",notes:"",active:true},
-      {id:"service_shipping",name:"Szállítás / futár",code:"SZALLITAS",cost:0,unit:"per shipment",notes:"",active:true},
-      {id:"service_urgent",name:"Sürgősségi felár",code:"SURGOS",cost:0,unit:"per job",notes:"",active:true}
-    ];
-  }
-  db.serviceCatalog.forEach(x=>{
-    x.id=x.id||uid("service");x.cost=Number(x.cost)||0;
-    if(x.code==null)x.code="";if(x.unit==null)x.unit="";if(x.notes==null)x.notes="";
-    if(x.active==null)x.active=true;
-  });
-  ensureMaintenanceParts();
-  db.locations=db.locations||[];
-  db.locations.forEach(h=>{
-    h.id=h.id||uid("hospital");if(h.contact==null)h.contact="";if(h.contactInfo==null)h.contactInfo="";if(h.accountNo==null)h.accountNo="";
-    h.wards=h.wards||[];h.wards.forEach(w=>{w.id=w.id||uid("ward");if(w.contactInfo==null)w.contactInfo=""});
-  });
-  let autoIdCounter=1;
-  const usedUnitIds=new Set(db.units.map(u=>String(u.unitId||"").toLowerCase()).filter(Boolean));
-  const allocLegacyId=()=>{let id;do{id="STAT-"+String(autoIdCounter++).padStart(3,"0")}while(usedUnitIds.has(id.toLowerCase()));usedUnitIds.add(id.toLowerCase());return id};
+  db.partsCatalog.forEach(p=>{p.id=p.id||uid("part");p.cost=Number(p.cost)||0;if(p.listPrice==null)p.listPrice="";else if(p.listPrice!=="")p.listPrice=Math.max(0,Number(p.listPrice)||0);if(p.supplier==null)p.supplier="";if(p.active==null)p.active=true;const kt=`${p.partNo||""} ${p.name||""}`.toUpperCase();if(/SERVICE-KIT-[34]|\bKIT\s*[34]\b/.test(kt))p.active=false});
+  if(!Array.isArray(db.serviceCatalog))db.serviceCatalog=[
+    {id:"service_callout",name:"Kiszállási költség",code:"KISZALLAS",cost:0,unit:"per visit",notes:"",active:true},
+    {id:"service_inspection",name:"Felülvizsgálat",code:"FELULVIZSGALAT",cost:0,unit:"per inspection",notes:"",active:true},
+    {id:"service_diagnostics",name:"Bevizsgálás / diagnosztika",code:"DIAGNOSZTIKA",cost:0,unit:"per job",notes:"",active:true},
+    {id:"service_fixed_labour",name:"Munkadíj (fix)",code:"MUNKADIJ-FIX",cost:0,unit:"per job",notes:"",active:true},
+    {id:"service_km",name:"Kilométerdíj",code:"KM",cost:0,unit:"per km",notes:"",active:true},
+    {id:"service_commissioning",name:"Beüzemelés",code:"BEUZEMELES",cost:0,unit:"per unit",notes:"",active:true},
+    {id:"service_shipping",name:"Szállítás / futár",code:"SZALLITAS",cost:0,unit:"per shipment",notes:"",active:true},
+    {id:"service_urgent",name:"Sürgősségi felár",code:"SURGOS",cost:0,unit:"per job",notes:"",active:true}
+  ];
+  db.serviceCatalog.forEach(x=>{x.id=x.id||uid("service");x.cost=Number(x.cost)||0;if(x.code==null)x.code="";if(x.unit==null)x.unit="";if(x.notes==null)x.notes="";if(x.active==null)x.active=true});
+  ensureMaintenanceParts();db.locations=db.locations||[];
+  db.locations.forEach(h=>{h.id=h.id||uid("hospital");if(h.contact==null)h.contact="";if(h.contactInfo==null)h.contactInfo="";if(h.accountNo==null)h.accountNo="";h.wards=h.wards||[];h.wards.forEach(w=>{w.id=w.id||uid("ward");if(w.contactInfo==null)w.contactInfo=""})});
+  let autoIdCounter=1;const usedUnitIds=new Set(db.units.map(u=>String(u.unitId||"").toLowerCase()).filter(Boolean));const allocLegacyId=()=>{let id;do{id="STAT-"+String(autoIdCounter++).padStart(3,"0")}while(usedUnitIds.has(id.toLowerCase()));usedUnitIds.add(id.toLowerCase());return id};
   db.units.forEach(u=>{
-    if(!u.unitId)u.unitId=allocLegacyId();
-    if(!u.status)u.status="Active";
-    if(!u.type)u.type=u.model||"";
-    u.model=u.type;
-    if(u.productNo==null)u.productNo="";
-    if(u.manufactured==null)u.manufactured="";
-    if(u.cycleCount==null)u.cycleCount="";
-    if(u.cycleCountDate==null)u.cycleCountDate="";
-    if(u.software==null)u.software="";
-    if(u.interfaceFirmware==null)u.interfaceFirmware="";
-    if(u.accessories==null)u.accessories="";
-    if(u.cassetteCount==null)u.cassetteCount=inferCassetteCount(u.accessories);
-    if(u.maintenanceProfile==null)u.maintenanceProfile="auto";
-    if(u.legacyNotes==null)u.legacyNotes="";
-    u.schedules=u.schedules||{six:{enabled:true,last:"",next:"",lastCycle:"",nextCycle:""},twelve:{enabled:true,last:"",next:""}};
-    u.schedules.six=u.schedules.six||{enabled:false,last:"",next:"",lastCycle:"",nextCycle:""};
-    if(u.schedules.six.lastCycle==null)u.schedules.six.lastCycle="";
-    if(u.schedules.six.nextCycle==null)u.schedules.six.nextCycle="";
-    u.schedules.twelve=u.schedules.twelve||{enabled:false,last:"",next:""};
-    u.checkups=u.checkups||[];u.repairs=u.repairs||[];u.photos=u.photos||[];
-    u.checkups.forEach(c=>{if(c.cycleCount==null)c.cycleCount="";if(c.serviceKit==null)c.serviceKit="";if(c.maintenanceComponents==null)c.maintenanceComponents=[]});
-    u.repairs.forEach(r=>{
-      if(!r.eventType)r.eventType="Repair";
-      r.partsUsed=r.partsUsed||[];
-      r.partsUsed.forEach(p=>{p.id=p.id||uid("usedpart");p.qty=Number(p.qty)||1;p.unitCost=Number(p.unitCost)||0});
-      r.servicesUsed=r.servicesUsed||[];
-      r.servicesUsed.forEach(x=>{
-        x.id=x.id||uid("usedservice");x.qty=Number(x.qty)||1;x.unitCost=Number(x.unitCost)||0;
-        if(x.code==null)x.code="";if(x.unit==null)x.unit="";
-      });
-      if(r.laborHours==null)r.laborHours=0;
-      if(r.hourlyRate==null)r.hourlyRate=0;
-      if(r.otherCost==null)r.otherCost=0;
-      if(r.costNote==null)r.costNote="";
-    });
+    if(!u.unitId)u.unitId=allocLegacyId();if(!u.status)u.status="Active";if(!u.type)u.type=u.model||"";u.model=u.type;
+    ["productNo","customerIdentifierNo","hospitalOrderNo","naturasoftNo","mediolaDeliveryNo","mediolaDeliveryDate","mediolaInvoiceNo","mediolaInvoiceDate","repairLocation","workflowStatus","manufactured","cycleCountDate","software","interfaceFirmware","accessories","legacyNotes"].forEach(k=>{if(u[k]==null)u[k]=""});
+    if(u.cycleCount==null)u.cycleCount="";if(u.cassetteCount==null)u.cassetteCount=inferCassetteCount(u.accessories);if(u.maintenanceProfile==null)u.maintenanceProfile="auto";
+    if(!Array.isArray(u.workflowHistory))u.workflowHistory=[];u.workflowHistory.forEach(w=>{w.id=w.id||uid("workflow");["date","from","status","note","by"].forEach(k=>{if(w[k]==null)w[k]=""})});
+    u.workflowMilestones=u.workflowMilestones||{};["repairCompleted","pricingCompleted","quoteSent","orderReceived","shipped","invoiced"].forEach(k=>{if(u.workflowMilestones[k]==null)u.workflowMilestones[k]=""});
+    const mm={repair_completed:"repairCompleted",pricing_completed:"pricingCompleted",quote_sent:"quoteSent",order_received:"orderReceived",shipped:"shipped",invoiced:"invoiced"};u.workflowHistory.forEach(w=>{const k=mm[w.status];if(k&&w.date&&!u.workflowMilestones[k])u.workflowMilestones[k]=w.date});if(u.mediolaDeliveryDate&&!u.workflowMilestones.shipped)u.workflowMilestones.shipped=u.mediolaDeliveryDate;if(u.mediolaInvoiceDate&&!u.workflowMilestones.invoiced)u.workflowMilestones.invoiced=u.mediolaInvoiceDate;
+    u.schedules=u.schedules||{six:{enabled:true,last:"",next:"",lastCycle:"",nextCycle:""},twelve:{enabled:true,last:"",next:""}};u.schedules.six=u.schedules.six||{enabled:false,last:"",next:"",lastCycle:"",nextCycle:""};if(u.schedules.six.lastCycle==null)u.schedules.six.lastCycle="";if(u.schedules.six.nextCycle==null)u.schedules.six.nextCycle="";u.schedules.twelve=u.schedules.twelve||{enabled:false,last:"",next:""};
+    u.checkups=u.checkups||[];u.repairs=u.repairs||[];u.photos=u.photos||[];u.checkups.forEach(c=>{if(c.cycleCount==null)c.cycleCount="";if(c.serviceKit==null)c.serviceKit="";if(c.maintenanceComponents==null)c.maintenanceComponents=[]});
+    u.repairs.forEach(r=>{if(!r.eventType)r.eventType="Repair";if(r.repairLocation==null)r.repairLocation="";r.partsUsed=r.partsUsed||[];r.partsUsed.forEach(p=>{p.id=p.id||uid("usedpart");p.qty=Number(p.qty)||1;p.unitCost=Number(p.unitCost)||0;if(p.purchaseCost==null)p.purchaseCost="";if(p.listPrice==null)p.listPrice=""});r.servicesUsed=r.servicesUsed||[];r.servicesUsed.forEach(x=>{x.id=x.id||uid("usedservice");x.qty=Number(x.qty)||1;x.unitCost=Number(x.unitCost)||0;if(x.code==null)x.code="";if(x.unit==null)x.unit=""});if(r.laborHours==null)r.laborHours=0;if(r.hourlyRate==null)r.hourlyRate=0;if(r.otherCost==null)r.otherCost=0;if(r.costNote==null)r.costNote=""});
     fillAutomaticDueDates(u);
   });
   masterHospitals();
@@ -2891,7 +3082,7 @@ async function fetchCloudRow(){
 }
 async function applyCloudRow(row){
   if(!row || !cloudPayloadLooksInitialized(row.data))return false;
-  const needsServiceCatalogMigration=!Array.isArray(row.data.serviceCatalog);
+  const needsV13Migration=Number(row.data.version||0)<13||!Array.isArray(row.data.serviceCatalog)||!row.data.settings||Number(row.data.settings.hourlyRate||0)===0||(row.data.partsCatalog||[]).some(p=>p.listPrice===undefined)||(row.data.units||[]).some(u=>u.workflowHistory===undefined||u.hospitalOrderNo===undefined);
   suppressCloudSave=true;
   try{
     db=row.data;
@@ -2903,15 +3094,15 @@ async function applyCloudRow(row){
     $("#dbName").value=db.databaseName||"Mediola STATIM database";
     await localSave(); // offline cache / emergency fallback
     render();
-    setCloudState(`Shared · v${cloudVersion}`);
+    setCloudState(currentLang==="hu"?`Közös adatbázis · v${cloudVersion}`:`Shared · v${cloudVersion}`);
   }finally{
     suppressCloudSave=false;
   }
-  if(needsServiceCatalogMigration && cloudReady)queueCloudSave();
+  if(needsV13Migration && cloudReady)queueCloudSave();
   return true;
 }
 async function loadCloudDatabase(){
-  setCloudState("Loading shared database…","saving");
+  setCloudState(currentLang==="hu"?"Közös adatbázis betöltése…":"Loading shared database…","saving");
   const row=await fetchCloudRow();
   if(!cloudPayloadLooksInitialized(row.data)){
     cloudVersion=Number(row.version)||1;
@@ -2925,7 +3116,7 @@ async function loadCloudDatabase(){
 function queueCloudSave(){
   if(!cloudReady || cloudConflict)return;
   cloudSaveQueued=true;
-  setCloudState("Saving…","saving");
+  setCloudState(currentLang==="hu"?"Mentés…":"Saving…","saving");
   clearTimeout(cloudSaveTimer);
   cloudSaveTimer=setTimeout(()=>flushCloudSave(),650);
 }
@@ -2959,7 +3150,7 @@ async function flushCloudSave(){
 
     if(!data || data.length===0){
       cloudConflict=true;
-      setCloudState("Cloud changed on another PC","error");
+      setCloudState(currentLang==="hu"?"A közös adatbázis megváltozott egy másik gépen":"Cloud changed on another PC","error");
       const reload=confirm(
         "Another signed-in PC saved a newer version of the STATIM database before this save completed.\\n\\n" +
         "Press OK to reload the newer shared version. Press Cancel to keep your unsaved browser copy so you can export it as JSON first."
@@ -2974,11 +3165,11 @@ async function flushCloudSave(){
 
     cloudVersion=Number(data[0].version)||nextVersion;
     cloudUpdatedAt=data[0].updated_at||"";
-    setCloudState(`Shared · saved v${cloudVersion}`);
+    setCloudState(currentLang==="hu"?`Közös adatbázis · mentve v${cloudVersion}`:`Shared · saved v${cloudVersion}`);
     await localSave();
   }catch(e){
     console.error(e);
-    setCloudState("Cloud save failed","error");
+    setCloudState(currentLang==="hu"?"Sikertelen felhőmentés":"Cloud save failed","error");
     toast("Cloud save failed: "+(e.message||String(e)));
   }finally{
     cloudSaveInFlight=false;
@@ -3018,7 +3209,7 @@ async function initializeCloudFromObject(obj){
     $("#dbName").value=db.databaseName||"Mediola STATIM database";
     await localSave();
     render();
-    setCloudState(`Shared · saved v${cloudVersion}`);
+    setCloudState(currentLang==="hu"?`Közös adatbázis · mentve v${cloudVersion}`:`Shared · saved v${cloudVersion}`);
     hideAuthGate();
   }finally{
     suppressCloudSave=false;
@@ -3036,7 +3227,7 @@ async function startApplication(){
   }catch(e){
     console.error(e);
     appStarted=false;
-    setCloudState("Cloud connection failed","error");
+    setCloudState(currentLang==="hu"?"Sikertelen kapcsolat a közös adatbázissal":"Cloud connection failed","error");
     showAuthPanel("login");
     showAuthError("loginError","Could not load the shared database: "+(e.message||String(e)));
   }
@@ -3161,7 +3352,7 @@ $("#signOutBtn").onclick=async()=>{
   cloudVersion=null;
   appStarted=false;
   $("#userStrip").style.display="none";
-  setCloudState("Signed out");
+  setCloudState(currentLang==="hu"?"Kijelentkezve":"Signed out");
   showAuthPanel("login");
 };
 
