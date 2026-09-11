@@ -111,6 +111,28 @@
   .meta-box{background:var(--panel2);border:1px solid #e6ecef;padding:9px;border-radius:10px}
   .meta-box .k{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:800}
   .meta-box .v{font-size:13px;font-weight:800;margin-top:3px}
+  .workorder-hero{margin:0 0 10px;padding:10px 12px;border:1px solid #b8d7dc;background:linear-gradient(135deg,#e8f6f7,#f8fcfc);border-radius:12px;display:flex;gap:10px;align-items:center;justify-content:space-between}
+  .workorder-hero.current{border-color:#77b9c1;background:linear-gradient(135deg,#dff3f5,#f7fcfc)}
+  .workorder-hero .wo-label{font-size:10px;text-transform:uppercase;letter-spacing:.07em;font-weight:900;color:#4d6970}
+  .workorder-hero .wo-number{font-size:18px;font-weight:950;color:#123b42;line-height:1.1;margin-top:2px}
+  .workorder-hero .wo-meta{font-size:11px;color:var(--muted);text-align:right}
+  .meta-box.doc-ref{background:#f3f8ff;border-color:#c9dcef}
+  .meta-box.doc-ref.multi{background:#fff4cf;border-color:#e4c96e}
+  .doc-ref details{margin-top:3px}.doc-ref summary{cursor:pointer;font-weight:900;color:#3c5963;list-style:none}
+  .doc-ref summary::-webkit-details-marker{display:none}.doc-ref summary:after{content:' ▾';font-size:10px}
+  .doc-ref details[open] summary:after{content:' ▴'}
+  .doc-ref-list{display:grid;gap:5px;margin-top:7px;font-size:11px;font-weight:700;color:#44575e}
+  .doc-ref-item{padding:5px 6px;background:rgba(255,255,255,.72);border-radius:7px;border:1px solid rgba(80,110,120,.12)}
+  .pricing-panel{grid-column:span 2;border:2px solid #77b9c1;background:linear-gradient(135deg,#eef9fa,#fbfdfd);border-radius:15px;padding:14px;margin-top:4px}
+  .pricing-panel-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}.pricing-panel-head .spacer{flex:1}
+  .pricing-panel-title{font-size:15px;font-weight:950;color:#173f46}.pricing-panel-help{font-size:11px;color:var(--muted);margin-top:3px}
+  .price-splits{display:grid;gap:11px;margin-top:10px}.price-split{border:1px solid #cbdfe2;background:#fff;border-radius:13px;padding:12px}
+  .price-split-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}.price-split-head strong{font-size:14px}.price-split-head .spacer{flex:1}
+  .split-doc-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:10px}
+  .split-items{border:1px solid #e0e8ea;background:#f8fafb;border-radius:10px;padding:9px;margin-top:9px}.split-items-title{font-size:10px;text-transform:uppercase;letter-spacing:.06em;font-weight:900;color:var(--muted);margin-bottom:6px}
+  .split-item-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px 10px}.split-item{display:flex;align-items:flex-start;gap:6px;font-size:11px}.split-item input{width:auto;margin-top:2px}
+  .split-total-line{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-top:10px;padding-top:9px;border-top:1px solid #e2eaec;font-size:12px}.split-total-line b{font-size:15px}
+  .pricing-grand-total{display:flex;justify-content:flex-end;gap:10px;align-items:center;margin-top:11px;font-weight:900}.pricing-grand-total .amount{font-size:20px;color:#173f46}
   .due-list{display:grid;gap:7px;margin-top:11px}
   .due-line{display:flex;justify-content:space-between;gap:10px;align-items:center;font-size:12px}
   .card-actions{
@@ -218,6 +240,7 @@
     .catalog-row{grid-template-columns:1fr}
     .catalog-row .price{text-align:left}
     .cost-summary{grid-template-columns:1fr 1fr}
+    .split-doc-grid,.split-item-grid{grid-template-columns:1fr}
   }
   @media print{
     .topbar,aside,.card-actions,.toolbar .btn,.toolbar select{display:none!important}
@@ -486,9 +509,7 @@
               <option value="repair_in_progress">Repair in progress</option>
               <option value="repair_completed">Repair completed</option>
               <option value="waiting_pricing">Waiting for pricing</option>
-              <option value="pricing_completed">Pricing completed</option>
               <option value="waiting_quote">Waiting for quotation</option>
-              <option value="quote_sent">Quotation sent</option>
               <option value="waiting_order">Waiting for customer order</option>
               <option value="order_received">Order received</option>
               <option value="shipped">Shipped / delivered</option>
@@ -700,6 +721,11 @@
         <div class="cost-box"><div class="k" id="otherSubtotalLabel">Other</div><div class="v" id="rOtherSubtotal">0 Ft</div></div>
         <div class="cost-box"><div class="k" id="totalSubtotalLabel">Total</div><div class="v" id="rTotalDisplay">0 Ft</div></div>
       </div>
+      <div class="pricing-panel" id="repairPricingPanel">
+        <div class="pricing-panel-head"><div><div class="pricing-panel-title" id="pricingSplitsTitle">Pricing / price splits</div><div class="pricing-panel-help" id="pricingSplitsHelp">Create as many separate price groups as needed.</div></div><div class="spacer"></div><button class="btn brand" type="button" id="addPricingSplitBtn">+ Add price split</button></div>
+        <div class="price-splits" id="pricingSplitsWrap"></div>
+        <div class="pricing-grand-total"><span id="pricingSplitsTotalLabel">Split prices total</span><span class="amount" id="pricingSplitsTotal">0 Ft</span></div>
+      </div>
     </div>
     <div class="footer-actions"><button class="btn ghost" data-close="repairModal">Cancel</button><button class="btn brand" id="saveRepairBtn">Save repair</button></div>
   </div>
@@ -867,7 +893,7 @@ let cloudSaveQueued = false;
 let cloudConflict = false;
 let suppressCloudSave = false;
 
-const APP_VERSION = 15;
+const APP_VERSION = 16;
 const blankDB = () => ({
   app:"Mediola STATIM Service Manager",
   version:APP_VERSION,
@@ -916,6 +942,7 @@ let editingCatalogPartId = null;
 let editingCatalogServiceId = null;
 let repairPartsDraft = [];
 let repairServicesDraft = [];
+let repairPriceSplitsDraft = [];
 let fileHandle = null;
 
 const $ = s => document.querySelector(s);
@@ -958,15 +985,15 @@ const I18N = {
     nextMaintenanceKit:"Next maintenance kit", autoFromHistory:"Automatic from history", lastMaintenance:"Last maintenance", nextMaintenanceDue:"Next maintenance due",
     identification:"Identification", locationContacts:"Location & contacts", technicalData:"Technical data",
     notesLegacy:"Notes & legacy data", legacyNotes:"Imported / legacy notes",
-    asset:"Asset / inventory no.", assetShort:"Asset no.", customerIdentifier:"Identifier / delivery note no.", hospitalOrderNo:"Hospital order no.", naturasoftNo:"NaturaSoft no.",
+    asset:"Asset / inventory no.", assetShort:"Asset no.", customerIdentifier:"Identifier / delivery note no.", hospitalOrderNo:"Hospital order no.", naturasoftNo:"NaturaSoft quotation no.",
     orderBilling:"Orders, delivery & invoicing", deliveryNo:"Mediola delivery note no.", deliveryDate:"Delivery date", invoiceNo:"Mediola invoice no.", invoiceDate:"Invoice date",
     repairLocation:"Repair location", repairLocationNone:"Not specified", repairLocationOnsite:"On-site repair", repairLocationWorkshop:"Workshop repair",
     workflow:"Current workflow", workflowStatus:"Workflow status", workflowDate:"Status date", workflowNote:"Status note", workflowHelpTitle:"Flexible workflow",
-    workflowHelp:"Statuses can be used in any order. Every change is saved to the timeline; only completed milestones receive dates on the card.",
+    workflowHelp:"No interim Priced / Quote ready status is needed. Waiting for pricing → Waiting for quotation records the pricing-completed date. Waiting for quotation → Waiting for customer order records the quotation-sent date. Every change stays in the timeline.",
     wfNone:"No workflow status", wfWaitingRepair:"Waiting for repair", wfRepairProgress:"Repair in progress", wfRepairDone:"Repair completed",
     wfWaitingPricing:"Waiting for pricing", wfPricingDone:"Pricing completed", wfWaitingQuote:"Waiting for quotation", wfQuoteSent:"Quotation sent",
     wfWaitingOrder:"Waiting for customer order", wfOrderReceived:"Order received", wfShipped:"Shipped / delivered", wfInvoiced:"Invoiced",
-    milestoneRepair:"Repaired", milestonePricing:"Priced", milestoneOrder:"Order", milestoneShipped:"Shipped", milestoneInvoice:"Invoiced",
+    milestoneRepair:"Repaired", milestonePricing:"Priced", milestoneQuote:"Quote sent", milestoneOrder:"Order", milestoneShipped:"Shipped", milestoneInvoice:"Invoiced",
     lastService:"Last service", installed:"Acquisition / installation date", responsible:"Responsible contact", phoneEmail:"Phone / email",
     technician:"Mediola technician", internalTag:"Internal / legacy tag", unitNotes:"Unit notes", schedules:"Inspection schedules",
     sixCheck:"6 month checkup", sixHelp:"Track a recurring 6-month inspection.", twelveCheck:"12 month checkup", twelveHelp:"Track a recurring annual inspection.",
@@ -986,6 +1013,8 @@ const I18N = {
     manageParts:"Manage parts & labour", costCalculation:"Cost calculation", laborHours:"Labour hours", hourlyRate:"Hourly labour rate",
     otherCost:"Other cost / adjustment", costNote:"Cost note", partsSubtotal:"Parts — purchase net", laborSubtotal:"Hourly labour", serviceSubtotal:"Services", otherSubtotal:"Other", total:"Total",
     photo:"Photo", view:"View", delete:"Delete", photoCaption:"Photo caption...", noHistory:"No history yet.", clickEnlarge:"Click to enlarge",
+    currentWorkOrder:"Current work order", lastWorkOrder:"Last work order", noWorkOrderNo:"No work-order number",
+    pricingSplits:"Pricing / price splits", pricingSplitsHelp:"Create as many separate price groups as needed. Each split can have its own items, manual net price and document numbers.", addPricingSplit:"+ Add price split", splitPricesTotal:"Split prices total", splitName:"Split name", priceType:"Price type", manualNetPrice:"Manual net price", assignedItems:"Items in this split", assignedCost:"Internal cost of assigned items", noPricingSplits:"No split pricing yet.", removeSplit:"Remove split", priceTypeG1:"G1", priceTypeSpecial:"Special", priceTypeDismantled:"Dismantled price", priceTypeCustom:"Custom", quoteNo:"NaturaSoft quotation no.", quoteSentDate:"Quotation sent date", orderNo:"Order no.", orderReceivedDate:"Order received date", deliveryNoShort:"Delivery note no.", invoiceNoShort:"Invoice no.",
     saveRepair:"Save repair", partsModalTitle:"Parts & labour", partsModalSub:"Maintain reusable parts, service charges and labour pricing.",
     defaultHourlyRate:"Default hourly labour rate", rateHow:"How it works", rateHelp:"New repairs use this rate automatically. Each repair keeps its own saved rate, so historical totals do not change later.",
     serviceCatalog:"Service / labour catalogue", serviceName:"Charge name *", serviceCode:"Code", serviceDefaultPrice:"Default price", serviceUnit:"Unit / basis", serviceNotes:"Notes",
@@ -1047,15 +1076,15 @@ const I18N = {
     nextMaintenanceKit:"Következő karbantartási készlet", autoFromHistory:"Automatikus az előzményekből", lastMaintenance:"Utolsó karbantartás", nextMaintenanceDue:"Következő karbantartás esedékes",
     identification:"Azonosítás", locationContacts:"Helyszín és kapcsolatok", technicalData:"Műszaki adatok",
     notesLegacy:"Megjegyzések és régi adatok", legacyNotes:"Importált / régi megjegyzések",
-    asset:"Leltárszám / eszközszám", assetShort:"Leltár / eszköz", customerIdentifier:"Azonosító / szállítólevélszám", hospitalOrderNo:"Kórházi megrendelésszám", naturasoftNo:"NaturaSoft szám",
+    asset:"Leltárszám / eszközszám", assetShort:"Leltár / eszköz", customerIdentifier:"Azonosító / szállítólevélszám", hospitalOrderNo:"Kórházi megrendelésszám", naturasoftNo:"NaturaSoft árajánlatszám",
     orderBilling:"Megrendelés, szállítás és számlázás", deliveryNo:"Mediola szállítólevélszám", deliveryDate:"Leszállítás dátuma", invoiceNo:"Mediola számlaszám", invoiceDate:"Számlázás dátuma",
     repairLocation:"Javítás helye", repairLocationNone:"Nincs megadva", repairLocationOnsite:"Helyszíni javítás", repairLocationWorkshop:"Műhelyben",
     workflow:"Aktuális munkafolyamat", workflowStatus:"Munkafolyamat állapota", workflowDate:"Állapot dátuma", workflowNote:"Állapot megjegyzés", workflowHelpTitle:"Rugalmas munkafolyamat",
-    workflowHelp:"Az állapotok tetszőleges sorrendben használhatók. Minden állapotváltás bekerül az idővonalba; a kártyán csak a megtörtént mérföldkövek dátumai jelennek meg.",
+    workflowHelp:"Nincs külön Árazva / Árajánlat kész köztes állapot. Árazásra vár → Árajánlatra vár esetén rögzül az árazás elkészült dátuma. Árajánlatra vár → Megrendelőre vár esetén rögzül az árajánlat elküldésének dátuma. Minden változás megmarad az idővonalban.",
     wfNone:"Nincs munkafolyamat-állapot", wfWaitingRepair:"Javításra vár", wfRepairProgress:"Javítás alatt", wfRepairDone:"Javítás elvégezve",
     wfWaitingPricing:"Árazásra vár", wfPricingDone:"Árazva", wfWaitingQuote:"Árajánlatra vár", wfQuoteSent:"Árajánlat elküldve",
     wfWaitingOrder:"Megrendelőre vár", wfOrderReceived:"Megrendelés beérkezett", wfShipped:"Leszállítva", wfInvoiced:"Leszámlázva",
-    milestoneRepair:"Javítva", milestonePricing:"Árazva", milestoneOrder:"Megrendelés", milestoneShipped:"Leszállítva", milestoneInvoice:"Számlázva",
+    milestoneRepair:"Javítva", milestonePricing:"Árazva", milestoneQuote:"Árajánlat elküldve", milestoneOrder:"Megrendelés", milestoneShipped:"Leszállítva", milestoneInvoice:"Számlázva",
     lastService:"Utolsó szerviz", installed:"Beszerzés / telepítés dátuma", responsible:"Kapcsolattartó", phoneEmail:"Telefon / e-mail",
     technician:"Mediola technikus", internalTag:"Belső / régi azonosító", unitNotes:"Berendezés megjegyzések", schedules:"Felülvizsgálati ütemezés",
     sixCheck:"6 havi felülvizsgálat", sixHelp:"Ismétlődő 6 havi felülvizsgálat követése.", twelveCheck:"12 havi felülvizsgálat", twelveHelp:"Ismétlődő éves felülvizsgálat követése.",
@@ -1075,6 +1104,8 @@ const I18N = {
     manageParts:"Alkatrészek és munkadíj kezelése", costCalculation:"Költségszámítás", laborHours:"Munkaórák", hourlyRate:"Óradíj",
     otherCost:"Egyéb költség / korrekció", costNote:"Költség megjegyzés", partsSubtotal:"Alkatrészek — beszerzési nettó", laborSubtotal:"Óradíjas munkadíj", serviceSubtotal:"Szolgáltatások", otherSubtotal:"Egyéb", total:"Összesen",
     photo:"Fotó", view:"Megnyitás", delete:"Törlés", photoCaption:"Fotó megjegyzése...", noHistory:"Még nincs előzmény.", clickEnlarge:"Kattints a nagyításhoz",
+    currentWorkOrder:"Aktuális munkalap", lastWorkOrder:"Legutolsó munkalap", noWorkOrderNo:"Nincs munkalapszám",
+    pricingSplits:"Árazás / árbontások", pricingSplitsHelp:"Annyi külön árbontást adhatsz hozzá, amennyi kell. Minden bontásnak lehet saját tétele, kézzel megadott nettó ára és külön dokumentumszámai.", addPricingSplit:"+ Új árbontás", splitPricesTotal:"Árbontások nettó összesen", splitName:"Árbontás neve", priceType:"Ártípus", manualNetPrice:"Kézi nettó ár", assignedItems:"Ehhez az árbontáshoz tartozó tételek", assignedCost:"Hozzárendelt tételek belső költsége", noPricingSplits:"Még nincs árbontás.", removeSplit:"Árbontás törlése", priceTypeG1:"G1", priceTypeSpecial:"Speciális", priceTypeDismantled:"Bontott ár", priceTypeCustom:"Egyedi", quoteNo:"NaturaSoft árajánlatszám", quoteSentDate:"Árajánlat elküldés dátuma", orderNo:"Megrendelésszám", orderReceivedDate:"Megrendelés dátuma", deliveryNoShort:"Szállítólevélszám", invoiceNoShort:"Mediola számlaszám",
     saveRepair:"Javítás mentése", partsModalTitle:"Alkatrészek és munkadíj", partsModalSub:"Alkatrészek, szolgáltatási tételek és munkadíjak kezelése.",
     defaultHourlyRate:"Alapértelmezett óradíj", rateHow:"Működés", rateHelp:"Az új javítások automatikusan ezt az óradíjat használják. Minden javítás a saját mentett óradíját őrzi, ezért a korábbi összegek később nem változnak.",
     serviceCatalog:"Szolgáltatás- / munkadíjlista", serviceName:"Tétel neve *", serviceCode:"Kód", serviceDefaultPrice:"Alapár", serviceUnit:"Egység / elszámolás", serviceNotes:"Megjegyzések",
@@ -1578,6 +1609,7 @@ function applyLanguage(){
   $("#otherSubtotalLabel").textContent=L("otherSubtotal");
   $("#totalSubtotalLabel").textContent=L("total");
   $("#saveRepairBtn").textContent=L("saveRepair");
+  $("#pricingSplitsTitle").textContent=L("pricingSplits");$("#pricingSplitsHelp").textContent=L("pricingSplitsHelp");$("#addPricingSplitBtn").textContent=L("addPricingSplit");$("#pricingSplitsTotalLabel").textContent=L("splitPricesTotal");
   $$('#repairModal [data-close="repairModal"]').forEach(b=>{if(b.textContent.trim()!=="×")b.textContent=L("cancel")});
 
   $("#partsModalTitle").textContent=L("partsModalTitle");
@@ -1640,7 +1672,7 @@ function applyLanguage(){
 
   const repairLocationTexts=[L("repairLocationNone"),L("repairLocationOnsite"),L("repairLocationWorkshop")];
   repairLocationTexts.forEach((x,i)=>{if($("#fRepairLocation").options[i])$("#fRepairLocation").options[i].text=x;if($("#rRepairLocation").options[i])$("#rRepairLocation").options[i].text=x});
-  const workflowTexts=[L("wfNone"),L("wfWaitingRepair"),L("wfRepairProgress"),L("wfRepairDone"),L("wfWaitingPricing"),L("wfPricingDone"),L("wfWaitingQuote"),L("wfQuoteSent"),L("wfWaitingOrder"),L("wfOrderReceived"),L("wfShipped"),L("wfInvoiced")];
+  const workflowTexts=[L("wfNone"),L("wfWaitingRepair"),L("wfRepairProgress"),L("wfRepairDone"),L("wfWaitingPricing"),L("wfWaitingQuote"),L("wfWaitingOrder"),L("wfOrderReceived"),L("wfShipped"),L("wfInvoiced")];
   workflowTexts.forEach((x,i)=>{if($("#fWorkflowStatus").options[i])$("#fWorkflowStatus").options[i].text=x});
   $("#cResult").options[0].text=L("passed"); $("#cResult").options[1].text=L("passedNotes"); $("#cResult").options[2].text=L("repairRequired"); $("#cResult").options[3].text=L("failed");
   $("#rStatus").options[0].text=L("open"); $("#rStatus").options[1].text=L("waitingParts"); $("#rStatus").options[2].text=L("sentOut"); $("#rStatus").options[3].text=L("completed"); $("#rStatus").options[4].text=L("cancelled");
@@ -1648,7 +1680,7 @@ function applyLanguage(){
   updateProfileUI();
   updateMaintenanceKitUI();
   populateRepairPartSelect();
-  if($("#repairModal").classList.contains("open")) renderRepairPartsDraft();
+  if($("#repairModal").classList.contains("open")){renderRepairPartsDraft();renderRepairServicesDraft();renderPricingSplits()}
   if($("#partsModal").classList.contains("open")) renderPartCatalog();
 
   populateUnitHospitalSelect($("#fHospital").value||"",$("#fDepartment").value||"");
@@ -1686,9 +1718,7 @@ function workflowFilterDefinitions(){
     ["repair_in_progress","wfRepairProgress"],
     ["repair_completed","wfRepairDone"],
     ["waiting_pricing","wfWaitingPricing"],
-    ["pricing_completed","wfPricingDone"],
     ["waiting_quote","wfWaitingQuote"],
-    ["quote_sent","wfQuoteSent"],
     ["waiting_order","wfWaitingOrder"],
     ["order_received","wfOrderReceived"],
     ["shipped","wfShipped"],
@@ -1762,7 +1792,7 @@ function filteredUnits(){
       const hay=JSON.stringify({
         id:u.unitId,h:u.hospital,d:u.department,l:u.location,type:u.type||u.model,product:u.productNo,s:u.serial,a:u.assetNo,customerId:u.customerIdentifierNo,hospitalOrder:u.hospitalOrderNo,naturasoft:u.naturasoftNo,delivery:u.mediolaDeliveryNo,invoice:u.mediolaInvoiceNo,workflow:u.workflowStatus,repairLocation:u.repairLocation,t:u.tag,n:u.notes,legacy:u.legacyNotes,c:u.contact,
         manufactured:u.manufactured,sw:u.software,ifw:u.interfaceFirmware,accessories:u.accessories,cycles:u.cycleCount,status:u.status,
-        checks:u.checkups?.map(c=>[c.jobNo,c.notes,c.technician,c.cycleCount]), repairs:u.repairs?.map(r=>[r.eventType,r.jobNo,r.notes,r.parts])
+        checks:u.checkups?.map(c=>[c.jobNo,c.notes,c.technician,c.cycleCount]), repairs:u.repairs?.map(r=>[r.eventType,r.jobNo,r.notes,r.parts,(r.priceSplits||[]).map(sp=>[sp.label,sp.priceType,sp.naturasoftQuoteNo,sp.hospitalOrderNo,sp.mediolaDeliveryNo,sp.mediolaInvoiceNo])])
       }).toLowerCase();
       if(!hay.includes(q)) return false;
     }
@@ -1819,9 +1849,18 @@ function workflowStatusClass(status){
   return "";
 }
 function repairLocationText(value){return value==="On-site"?t("repairLocationOnsite"):value==="Workshop"?t("repairLocationWorkshop"):t("repairLocationNone")}
+function workflowIsActive(status){return !!status && status!=="invoiced"}
+function repairSortKey(r){return r?.date||r?.completedDate||r?.updatedAt||""}
+function cardWorkOrder(u){const all=(u.repairs||[]).slice().sort((a,b)=>repairSortKey(b).localeCompare(repairSortKey(a)));if(!all.length)return "";const open=all.filter(r=>!["Completed","Cancelled"].includes(r.status));const active=!!open.length||workflowIsActive(u.workflowStatus||"");const r=open[0]||all[0];const label=active?t("currentWorkOrder"):t("lastWorkOrder");const no=r.jobNo||t("noWorkOrderNo");const meta=[r.date?fmt(r.date):"",repairEventText(r.eventType||"Repair"),repairStatusText(r.status||"")].filter(Boolean).join(" · ");return `<div class="workorder-hero ${active?"current":""}"><div><div class="wo-label">${esc(label)}</div><div class="wo-number">${esc(no)}</div></div><div class="wo-meta">${esc(meta||"—")}</div></div>`}
+function allPricingSplits(u){return (u.repairs||[]).flatMap(r=>(r.priceSplits||[]).map(sp=>({...sp,_repairJob:r.jobNo||"",_repairDate:r.date||""})))}
+function uniqueDocRefs(items){const seen=new Set();return items.filter(x=>{if(!x.no)return false;const k=`${String(x.no).trim().toLowerCase()}|${x.date||""}`;if(seen.has(k))return false;seen.add(k);return true})}
+function cardDocRefs(u,kind){const rows=[];const legacy={quote:{no:u.naturasoftNo||"",date:u.workflowMilestones?.quoteSent||"",split:""},order:{no:u.hospitalOrderNo||"",date:u.workflowMilestones?.orderReceived||"",split:""},delivery:{no:u.mediolaDeliveryNo||"",date:u.mediolaDeliveryDate||u.workflowMilestones?.shipped||"",split:""},invoice:{no:u.mediolaInvoiceNo||"",date:u.mediolaInvoiceDate||u.workflowMilestones?.invoiced||"",split:""}}[kind];if(legacy?.no)rows.push(legacy);allPricingSplits(u).forEach(sp=>{const m={quote:[sp.naturasoftQuoteNo,sp.quoteSentDate],order:[sp.hospitalOrderNo,sp.orderReceivedDate],delivery:[sp.mediolaDeliveryNo,sp.deliveryDate],invoice:[sp.mediolaInvoiceNo,sp.invoiceDate]}[kind]||[];if(m[0])rows.push({no:m[0],date:m[1]||"",split:sp.label||sp.priceType||""})});return uniqueDocRefs(rows)}
+function renderCardDocRef(label,refs){if(!refs.length)return `<div class="meta-box doc-ref"><div class="k">${esc(label)}</div><div class="v">—</div></div>`;if(refs.length===1){const x=refs[0];return `<div class="meta-box doc-ref"><div class="k">${esc(label)}</div><div class="v">${esc(x.no)}</div>${(x.date||x.split)?`<div class="sub">${[x.split,x.date?fmt(x.date):""].filter(Boolean).map(esc).join(" · ")}</div>`:""}</div>`}return `<div class="meta-box doc-ref multi"><div class="k">${esc(label)}</div><details><summary>${refs.length} ${currentLang==="hu"?"tétel":"entries"}</summary><div class="doc-ref-list">${refs.map(x=>`<div class="doc-ref-item"><b>${esc(x.no)}</b>${x.split?` · ${esc(x.split)}`:""}${x.date?` · ${fmt(x.date)}`:""}</div>`).join("")}</div></details></div>`}
+function latestDate(values){return values.filter(Boolean).sort().slice(-1)[0]||""}
 function cardMilestones(u){
   const m=u.workflowMilestones||{};
-  const items=[[t("milestoneRepair"),m.repairCompleted],[t("milestonePricing"),m.pricingCompleted],[t("milestoneOrder"),m.orderReceived],[t("milestoneShipped"),u.mediolaDeliveryDate||m.shipped],[t("milestoneInvoice"),u.mediolaInvoiceDate||m.invoiced]].filter(x=>x[1]);
+  const quoteDate=latestDate([m.quoteSent,...cardDocRefs(u,"quote").map(x=>x.date)]),orderDate=latestDate([m.orderReceived,...cardDocRefs(u,"order").map(x=>x.date)]),shippedDate=latestDate([u.mediolaDeliveryDate,m.shipped,...cardDocRefs(u,"delivery").map(x=>x.date)]),invoiceDate=latestDate([u.mediolaInvoiceDate,m.invoiced,...cardDocRefs(u,"invoice").map(x=>x.date)]);
+  const items=[[t("milestoneRepair"),m.repairCompleted],[t("milestonePricing"),m.pricingCompleted],[t("milestoneQuote"),quoteDate],[t("milestoneOrder"),orderDate],[t("milestoneShipped"),shippedDate],[t("milestoneInvoice"),invoiceDate]].filter(x=>x[1]);
   return items.length?`<div class="milestones">${items.map(([label,date])=>`<span class="milestone"><b>${esc(label)}:</b> ${fmt(date)}</span>`).join("")}</div>`:"";
 }
 function cardHTML(u){
@@ -1843,10 +1882,10 @@ function cardHTML(u){
     }).join("");
   }
   const status=u.status||"Active",wf=u.workflowStatus||"";
-  const delivery=[u.mediolaDeliveryNo,u.mediolaDeliveryDate?fmt(u.mediolaDeliveryDate):""].filter(Boolean).join(" · ");
-  const invoice=[u.mediolaInvoiceNo,u.mediolaInvoiceDate?fmt(u.mediolaInvoiceDate):""].filter(Boolean).join(" · ");
+  const quoteRefs=cardDocRefs(u,"quote"),orderRefs=cardDocRefs(u,"order"),deliveryRefs=cardDocRefs(u,"delivery"),invoiceRefs=cardDocRefs(u,"invoice");
   return `<article class="card due-${cls} ${u.archived?"archived":""}">
     <div class="stripe ${cls}"></div><div class="card-top"><div style="flex:1">
+      ${cardWorkOrder(u)}
       <h3>${esc(u.type||u.model||"STATIM")} · <span title="${t("serial")}">SN: ${esc(u.serial||"—")}</span></h3>
       <div class="sub">${esc(u.hospital||t("noHospital"))} → ${esc(u.department||t("noDepartment"))}${u.location?` · ${esc(u.location)}`:""}</div>
       <div class="pillrow">${u.unitId?`<span class="badge">${esc(u.unitId)}</span>`:""}${u.productNo?`<span class="badge">${esc(u.productNo)}</span>`:""}${status!=="Active"?`<span class="badge repair">${esc(equipmentStatusText(status))}</span>`:""}${wf?`<span class="workflow-badge ${workflowStatusClass(wf)}">${esc(workflowStatusText(wf))}</span>`:""}${u.repairLocation?`<span class="badge">${esc(repairLocationText(u.repairLocation))}</span>`:""}${repairs.length?`<span class="badge repair">${repairs.length} ${repairs.length==1?t("openRepairSing"):t("openRepairPlur")}</span>`:""}${u.archived?`<span class="badge">${t("archived")}</span>`:""}</div>
@@ -1854,10 +1893,10 @@ function cardHTML(u){
     </div></div>
     <div class="meta">
       <div class="meta-box"><div class="k">${t("assetShort")}</div><div class="v">${esc(u.assetNo||"—")}</div></div>
-      <div class="meta-box"><div class="k">${t("hospitalOrderNo")}</div><div class="v">${esc(u.hospitalOrderNo||"—")}</div></div>
-      <div class="meta-box"><div class="k">${t("naturasoftNo")}</div><div class="v">${esc(u.naturasoftNo||"—")}</div></div>
-      <div class="meta-box"><div class="k">${t("deliveryNo")}</div><div class="v">${esc(delivery||"—")}</div></div>
-      <div class="meta-box"><div class="k">${t("invoiceNo")}</div><div class="v">${esc(invoice||"—")}</div></div>
+      ${renderCardDocRef(t("hospitalOrderNo"),orderRefs)}
+      ${renderCardDocRef(t("naturasoftNo"),quoteRefs)}
+      ${renderCardDocRef(t("deliveryNo"),deliveryRefs)}
+      ${renderCardDocRef(t("invoiceNo"),invoiceRefs)}
       <div class="meta-box"><div class="k">${t("lastService")}</div><div class="v">${fmt((u.checkups||[]).slice().sort((a,b)=>(b.date||"").localeCompare(a.date||""))[0]?.date)}</div></div>
     </div>
     <div class="due-list">${schedule||`<div class="sub">${t("noInspection")}</div>`}</div>
@@ -1941,6 +1980,8 @@ function recordWorkflowChange(u,oldStatus,newStatus,date,note=""){
   u.workflowMilestones=u.workflowMilestones||{};
   const milestoneMap={repair_completed:"repairCompleted",pricing_completed:"pricingCompleted",quote_sent:"quoteSent",order_received:"orderReceived",shipped:"shipped",invoiced:"invoiced"};
   const key=milestoneMap[newStatus];if(key)u.workflowMilestones[key]=d;
+  if(oldStatus==="waiting_pricing" && newStatus==="waiting_quote")u.workflowMilestones.pricingCompleted=d;
+  if(oldStatus==="waiting_quote" && newStatus==="waiting_order")u.workflowMilestones.quoteSent=d;
   if(newStatus==="shipped"&&!u.mediolaDeliveryDate)u.mediolaDeliveryDate=d;
   if(newStatus==="invoiced"&&!u.mediolaInvoiceDate)u.mediolaInvoiceDate=d;
 }
@@ -2191,15 +2232,15 @@ function renderRepairServicesDraft(){
 }
 function updateRepairServiceQty(id,value){
   const x=repairServicesDraft.find(y=>y.id===id);if(!x)return;
-  x.qty=Math.max(.01,Number(value)||1);renderRepairServicesDraft();
+  x.qty=Math.max(.01,Number(value)||1);renderRepairServicesDraft();renderPricingSplits();
 }
 function updateRepairServiceCost(id,value){
   const x=repairServicesDraft.find(y=>y.id===id);if(!x)return;
-  x.unitCost=Math.max(0,Number(value)||0);renderRepairServicesDraft();
+  x.unitCost=Math.max(0,Number(value)||0);renderRepairServicesDraft();renderPricingSplits();
 }
 function removeRepairService(id){
   repairServicesDraft=repairServicesDraft.filter(x=>x.id!==id);
-  renderRepairServicesDraft();
+  renderRepairServicesDraft();renderPricingSplits();
 }
 function repairPartPurchasePrice(p){
   if(p.purchaseCost!=="" && p.purchaseCost!=null)return Number(p.purchaseCost)||0;
@@ -2245,26 +2286,26 @@ function renderRepairPartsDraft(){
 }
 function updateRepairPartQty(id,value){
   const p=repairPartsDraft.find(x=>x.id===id);if(!p)return;
-  p.qty=Math.max(.01,Number(value)||1);renderRepairPartsDraft();
+  p.qty=Math.max(.01,Number(value)||1);renderRepairPartsDraft();renderPricingSplits();
 }
 function updateRepairPartPurchaseCost(id,value){
   const p=repairPartsDraft.find(x=>x.id===id);if(!p)return;
   const cost=Math.max(0,Number(value)||0);
   p.purchaseCost=cost;
   p.unitCost=cost; // retained for backwards compatibility with older JSON versions
-  renderRepairPartsDraft();
+  renderRepairPartsDraft();renderPricingSplits();
 }
 function updateRepairPartListPrice(id,value){
   const p=repairPartsDraft.find(x=>x.id===id);if(!p)return;
   p.listPrice=value===""?"":Math.max(0,Number(value)||0);
-  renderRepairPartsDraft();
+  renderRepairPartsDraft();renderPricingSplits();
 }
-function removeRepairPart(id){repairPartsDraft=repairPartsDraft.filter(x=>x.id!==id);renderRepairPartsDraft()}
+function removeRepairPart(id){repairPartsDraft=repairPartsDraft.filter(x=>x.id!==id);renderRepairPartsDraft();renderPricingSplits()}
 function addKitPreset(code){
   const u=currentUnit();if(!u)return;const items=kitComponentsFor(u,code);
   if(!items.length){alert(currentLang==="hu"?"Ehhez a készülékhez nincs használható preset.":"No usable preset for this unit.");return}
   items.forEach(item=>{const existing=repairPartsDraft.find(p=>p.partNo&&item.partNo&&p.partNo.toUpperCase()===item.partNo.toUpperCase());if(existing)existing.qty=(Number(existing.qty)||0)+(Number(item.qty)||1);else repairPartsDraft.push(item)});
-  renderRepairPartsDraft();
+  renderRepairPartsDraft();renderPricingSplits();
   if(u.cassetteCount===""||u.cassetteCount==null)toast(currentLang==="hu"?"KIT hozzáadva; a kazettatömítés darabszámát ellenőrizd.":"KIT added; verify cassette seal quantity.");
   else toast(currentLang==="hu"?`${code} alkatrészei külön tételekként hozzáadva`:`${code} components added as individual parts`);
 }
@@ -2277,7 +2318,7 @@ $("#addRepairPartBtn").onclick=()=>{
   const existing=repairPartsDraft.find(p=>p.catalogId===src.id);
   if(existing)existing.qty=(Number(existing.qty)||0)+qty;
   else {const purchaseCost=Number(src.cost)||0,listPrice=src.listPrice===""||src.listPrice==null?"":Number(src.listPrice)||0;repairPartsDraft.push({id:uid("usedpart"),catalogId:src.id,name:src.name,partNo:src.partNo||"",purchaseCost,listPrice,unitCost:purchaseCost,qty})}
-  $("#rPartQty").value=1;renderRepairPartsDraft();
+  $("#rPartQty").value=1;renderRepairPartsDraft();renderPricingSplits();
 };
 $("#addRepairServiceBtn").onclick=()=>{
   const id=$("#rServiceSelect").value;if(!id)return;
@@ -2289,10 +2330,20 @@ $("#addRepairServiceBtn").onclick=()=>{
     id:uid("usedservice"),catalogId:src.id,name:src.name,code:src.code||"",
     unit:src.unit||"",unitCost:Number(src.cost)||0,qty
   });
-  $("#rServiceQty").value=1;renderRepairServicesDraft();
+  $("#rServiceQty").value=1;renderRepairServicesDraft();renderPricingSplits();
 };
-["rLaborHours","rHourlyRate","rOtherCost"].forEach(id=>$("#"+id).addEventListener("input",calculateRepairCost));
+["rLaborHours","rHourlyRate","rOtherCost"].forEach(id=>$("#"+id).addEventListener("input",()=>{calculateRepairCost();renderPricingSplits()}));
 $("#openPartsFromRepairBtn").onclick=()=>openPartsManager();
+
+function pricingLineItems(){const items=[];repairPartsDraft.forEach(p=>items.push({key:`part:${p.id}`,label:`${p.name}${p.partNo?` · ${p.partNo}`:""} × ${Number(p.qty)||1}`,cost:repairPartPurchasePrice(p)*(Number(p.qty)||0)}));repairServicesDraft.forEach(x=>items.push({key:`service:${x.id}`,label:`${x.name} × ${Number(x.qty)||1}`,cost:(Number(x.unitCost)||0)*(Number(x.qty)||0)}));const hours=Number($("#rLaborHours")?.value)||0,rate=Number($("#rHourlyRate")?.value)||0;items.push({key:"labour",label:`${currentLang==="hu"?"Óradíjas munkadíj":"Hourly labour"} · ${hours} × ${money(rate)}`,cost:hours*rate});const other=Number($("#rOtherCost")?.value)||0;items.push({key:"other",label:currentLang==="hu"?"Egyéb költség / korrekció":"Other cost / adjustment",cost:other});return items}
+function pricingSplitAssignedCost(sp){const m=new Map(pricingLineItems().map(x=>[x.key,x]));return (sp.itemKeys||[]).reduce((sum,k)=>sum+(m.get(k)?.cost||0),0)}
+function cleanPricingSplitAssignments(){const valid=new Set(pricingLineItems().map(x=>x.key));repairPriceSplitsDraft.forEach(sp=>sp.itemKeys=(sp.itemKeys||[]).filter(k=>valid.has(k)))}
+function updatePricingSplit(id,field,value){const sp=repairPriceSplitsDraft.find(x=>x.id===id);if(!sp)return;sp[field]=field==="netPrice"?(value===""?"":Math.max(0,Number(value)||0)):value;renderPricingSplits()}
+function togglePricingSplitItem(splitId,key,checked){const sp=repairPriceSplitsDraft.find(x=>x.id===splitId);if(!sp)return;sp.itemKeys=sp.itemKeys||[];if(checked){if(!sp.itemKeys.includes(key))sp.itemKeys.push(key)}else sp.itemKeys=sp.itemKeys.filter(k=>k!==key);renderPricingSplits()}
+function addPricingSplit(){const n=repairPriceSplitsDraft.length+1;repairPriceSplitsDraft.push({id:uid("split"),label:`${currentLang==="hu"?"Árbontás":"Split"} ${n}`,priceType:"G1",netPrice:"",itemKeys:[],naturasoftQuoteNo:"",quoteSentDate:"",hospitalOrderNo:"",orderReceivedDate:"",mediolaDeliveryNo:"",deliveryDate:"",mediolaInvoiceNo:"",invoiceDate:""});renderPricingSplits()}
+function removePricingSplit(id){if(!confirm(currentLang==="hu"?"Törlöd ezt az árbontást?":"Remove this price split?"))return;repairPriceSplitsDraft=repairPriceSplitsDraft.filter(x=>x.id!==id);renderPricingSplits()}
+function renderPricingSplits(){const wrap=$("#pricingSplitsWrap");if(!wrap)return;cleanPricingSplitAssignments();const items=pricingLineItems();if(!repairPriceSplitsDraft.length){wrap.innerHTML=`<div class="sub">${t("noPricingSplits")}</div>`;$("#pricingSplitsTotal").textContent=money(0);return}wrap.innerHTML=repairPriceSplitsDraft.map((sp,idx)=>{const assigned=new Set(sp.itemKeys||[]);const opts=[["G1",t("priceTypeG1")],["Special",t("priceTypeSpecial")],["Dismantled",t("priceTypeDismantled")],["Custom",t("priceTypeCustom")]].map(([v,l])=>`<option value="${v}" ${sp.priceType===v?"selected":""}>${esc(l)}</option>`).join("");const itemHtml=items.map(it=>`<label class="split-item"><input type="checkbox" ${assigned.has(it.key)?"checked":""} onchange="togglePricingSplitItem('${sp.id}','${it.key}',this.checked)"><span>${esc(it.label)} <b>${money(it.cost)}</b></span></label>`).join("");return `<div class="price-split"><div class="price-split-head"><strong>${currentLang==="hu"?"Árbontás":"Split"} ${idx+1}</strong><div class="spacer"></div><button class="btn small danger" type="button" onclick="removePricingSplit('${sp.id}')">${t("removeSplit")}</button></div><div class="grid3"><div class="field"><label>${t("splitName")}</label><input value="${esc(sp.label||"")}" onchange="updatePricingSplit('${sp.id}','label',this.value)"></div><div class="field"><label>${t("priceType")}</label><select onchange="updatePricingSplit('${sp.id}','priceType',this.value)">${opts}</select></div><div class="field"><label>${t("manualNetPrice")}</label><input type="number" min="0" step="1" value="${sp.netPrice===""?"":Number(sp.netPrice)||0}" onchange="updatePricingSplit('${sp.id}','netPrice',this.value)"></div></div><div class="split-items"><div class="split-items-title">${t("assignedItems")}</div><div class="split-item-grid">${itemHtml||"—"}</div></div><div class="split-total-line"><span>${t("assignedCost")}</span><b>${money(pricingSplitAssignedCost(sp))}</b></div><div class="split-doc-grid"><div class="field"><label>${t("quoteNo")}</label><input value="${esc(sp.naturasoftQuoteNo||"")}" onchange="updatePricingSplit('${sp.id}','naturasoftQuoteNo',this.value)"></div><div class="field"><label>${t("quoteSentDate")}</label><input type="date" value="${esc(sp.quoteSentDate||"")}" onchange="updatePricingSplit('${sp.id}','quoteSentDate',this.value)"></div><div class="field"><label>${t("orderNo")}</label><input value="${esc(sp.hospitalOrderNo||"")}" onchange="updatePricingSplit('${sp.id}','hospitalOrderNo',this.value)"></div><div class="field"><label>${t("orderReceivedDate")}</label><input type="date" value="${esc(sp.orderReceivedDate||"")}" onchange="updatePricingSplit('${sp.id}','orderReceivedDate',this.value)"></div><div class="field"><label>${t("deliveryNoShort")}</label><input value="${esc(sp.mediolaDeliveryNo||"")}" onchange="updatePricingSplit('${sp.id}','mediolaDeliveryNo',this.value)"></div><div class="field"><label>${t("deliveryDate")}</label><input type="date" value="${esc(sp.deliveryDate||"")}" onchange="updatePricingSplit('${sp.id}','deliveryDate',this.value)"></div><div class="field"><label>${t("invoiceNoShort")}</label><input value="${esc(sp.mediolaInvoiceNo||"")}" onchange="updatePricingSplit('${sp.id}','mediolaInvoiceNo',this.value)"></div><div class="field"><label>${t("invoiceDate")}</label><input type="date" value="${esc(sp.invoiceDate||"")}" onchange="updatePricingSplit('${sp.id}','invoiceDate',this.value)"></div></div></div>`}).join("");$("#pricingSplitsTotal").textContent=money(repairPriceSplitsDraft.reduce((sum,sp)=>sum+(Number(sp.netPrice)||0),0))}
+$("#addPricingSplitBtn").onclick=addPricingSplit;
 
 function openRepairModal(repair=null){
   const u=currentUnit();if(!u){alert(currentLang==="hu"?"Előbb mentsd el a berendezést.":"Save the unit first.");return}
@@ -2303,12 +2354,13 @@ function openRepairModal(repair=null){
   $("#rNotes").value=repair?.notes||"";$("#rParts").value=repair?.parts||"";
   repairPartsDraft=structuredClone(repair?.partsUsed||[]);
   repairServicesDraft=structuredClone(repair?.servicesUsed||[]);
+  repairPriceSplitsDraft=structuredClone(repair?.priceSplits||[]);
   const hasStructured=!!(repair?.partsUsed?.length || repair?.servicesUsed?.length || repair?.laborHours || repair?.hourlyRate || repair?.otherCost);
   $("#rLaborHours").value=repair?.laborHours??0;
   $("#rHourlyRate").value=repair?.hourlyRate??db.settings?.hourlyRate??0;
   $("#rOtherCost").value=repair?.otherCost??(!hasStructured && repair?.cost ? repair.cost : 0);
   $("#rCostNote").value=repair?.costNote||"";
-  populateRepairPartSelect();populateRepairServiceSelect();renderRepairPartsDraft();renderRepairServicesDraft();calculateRepairCost();
+  populateRepairPartSelect();populateRepairServiceSelect();renderRepairPartsDraft();renderRepairServicesDraft();calculateRepairCost();renderPricingSplits();
   openModal("repairModal");
 }
 $("#rStatus").onchange=()=>{if($("#rStatus").value==="Completed"&&!$("#rDone").value)$("#rDone").value=todayISO()}
@@ -2317,10 +2369,11 @@ $("#saveRepairBtn").onclick=()=>{
   const total=calculateRepairCost();
   const data={id:editingRepairId||uid("repair"),eventType:$("#rEventType").value||"Repair",date:$("#rDate").value||todayISO(),status:$("#rStatus").value,technician:$("#rTech").value.trim(),repairLocation:$("#rRepairLocation").value,
     completedDate:$("#rDone").value,jobNo:$("#rJob").value.trim(),cost:Math.round(total),notes:$("#rNotes").value.trim(),parts:$("#rParts").value.trim(),
-    partsUsed:structuredClone(repairPartsDraft),servicesUsed:structuredClone(repairServicesDraft),
+    partsUsed:structuredClone(repairPartsDraft),servicesUsed:structuredClone(repairServicesDraft),priceSplits:structuredClone(repairPriceSplitsDraft),
     laborHours:Number($("#rLaborHours").value)||0,hourlyRate:Number($("#rHourlyRate").value)||0,
     otherCost:Number($("#rOtherCost").value)||0,costNote:$("#rCostNote").value.trim(),updatedAt:new Date().toISOString()};
   u.repairs=u.repairs||[];const i=u.repairs.findIndex(x=>x.id===editingRepairId);if(i>=0)u.repairs[i]=data;else u.repairs.push(data);if(data.repairLocation)u.repairLocation=data.repairLocation;
+  u.workflowMilestones=u.workflowMilestones||{};const maxSplitDate=field=>latestDate((data.priceSplits||[]).map(sp=>sp[field]||""));const qd=maxSplitDate("quoteSentDate"),od=maxSplitDate("orderReceivedDate"),dd=maxSplitDate("deliveryDate"),idate=maxSplitDate("invoiceDate");if(qd)u.workflowMilestones.quoteSent=qd;if(od)u.workflowMilestones.orderReceived=od;if(dd)u.workflowMilestones.shipped=dd;if(idate)u.workflowMilestones.invoiced=idate;
   u.updatedAt=new Date().toISOString();changed();fillUnit(u);switchTab("repairs");closeModal("repairModal");toast(currentLang==="hu"?"Javítás mentve":"Repair saved");
 };
 function editRepair(id){const u=currentUnit(),r=u?.repairs?.find(x=>x.id===id);if(r)openRepairModal(r)}
@@ -2343,6 +2396,7 @@ function renderRepairs(u){
     const structured=(r.partsUsed||[]);
     const partsSummary=structured.length?structured.map(p=>`${esc(p.name)} × ${Number(p.qty)||1}`).join(", "):"";
     const serviceSummary=(r.servicesUsed||[]).length?(r.servicesUsed||[]).map(x=>`${esc(x.name)} × ${Number(x.qty)||1}${x.unit?` (${esc(x.unit)})`:""}`).join(", "):"";
+    const pricingSummary=(r.priceSplits||[]).length?(r.priceSplits||[]).map(sp=>`${esc(sp.label||sp.priceType||"")} · ${money(Number(sp.netPrice)||0)}`).join(" | "):"";
     const laborInfo=Number(r.laborHours)>0?`${Number(r.laborHours)} ${t("hoursShort")} × ${money(r.hourlyRate||0)}`:"";
     return `<div class="history-item">
       <div class="history-top"><strong>${fmt(r.date)} · ${esc(repairEventText(r.eventType||"Repair"))}${r.jobNo?` · ${esc(r.jobNo)}`:""}</strong><span class="badge ${["Completed","Cancelled"].includes(r.status)?"ok":"repair"}">${esc(repairStatusText(r.status))}</span></div>
@@ -2350,6 +2404,7 @@ function renderRepairs(u){
       ${r.notes?`<div class="history-body"><b>${currentLang==="hu"?"Hiba / munka":"Fault / work"}:</b> ${esc(r.notes)}</div>`:""}
       ${partsSummary?`<div class="history-body"><b>${t("partsSummary")}:</b> ${partsSummary}</div>`:""}
       ${serviceSummary?`<div class="history-body"><b>${t("serviceSummary")}:</b> ${serviceSummary}</div>`:""}
+      ${pricingSummary?`<div class="history-body"><b>${t("pricingSplits")}:</b> ${pricingSummary}</div>`:""}
       ${r.parts?`<div class="history-body"><b>${t("additionalParts")}:</b> ${esc(r.parts)}</div>`:""}
       ${laborInfo?`<div class="history-body"><b>${t("labourSummary")}:</b> ${laborInfo}</div>`:""}
       ${r.costNote?`<div class="history-body"><b>${t("costNote")}:</b> ${esc(r.costNote)}</div>`:""}
@@ -3189,10 +3244,10 @@ function normalizeDB(){
     if(u.nextMaintenanceKit==null)u.nextMaintenanceKit="";
     if(!Array.isArray(u.workflowHistory))u.workflowHistory=[];u.workflowHistory.forEach(w=>{w.id=w.id||uid("workflow");["date","from","status","note","by"].forEach(k=>{if(w[k]==null)w[k]=""})});
     u.workflowMilestones=u.workflowMilestones||{};["repairCompleted","pricingCompleted","quoteSent","orderReceived","shipped","invoiced"].forEach(k=>{if(u.workflowMilestones[k]==null)u.workflowMilestones[k]=""});
-    const mm={repair_completed:"repairCompleted",pricing_completed:"pricingCompleted",quote_sent:"quoteSent",order_received:"orderReceived",shipped:"shipped",invoiced:"invoiced"};u.workflowHistory.forEach(w=>{const k=mm[w.status];if(k&&w.date&&!u.workflowMilestones[k])u.workflowMilestones[k]=w.date});if(u.mediolaDeliveryDate&&!u.workflowMilestones.shipped)u.workflowMilestones.shipped=u.mediolaDeliveryDate;if(u.mediolaInvoiceDate&&!u.workflowMilestones.invoiced)u.workflowMilestones.invoiced=u.mediolaInvoiceDate;
+    const mm={repair_completed:"repairCompleted",pricing_completed:"pricingCompleted",quote_sent:"quoteSent",order_received:"orderReceived",shipped:"shipped",invoiced:"invoiced"};u.workflowHistory.forEach(w=>{const k=mm[w.status];if(k&&w.date&&!u.workflowMilestones[k])u.workflowMilestones[k]=w.date});if(u.mediolaDeliveryDate&&!u.workflowMilestones.shipped)u.workflowMilestones.shipped=u.mediolaDeliveryDate;if(u.mediolaInvoiceDate&&!u.workflowMilestones.invoiced)u.workflowMilestones.invoiced=u.mediolaInvoiceDate;if(u.workflowStatus==="pricing_completed")u.workflowStatus="waiting_quote";if(u.workflowStatus==="quote_sent")u.workflowStatus="waiting_order";
     u.schedules=u.schedules||{six:{enabled:true,last:"",next:"",lastCycle:"",nextCycle:""},twelve:{enabled:true,last:"",next:""}};u.schedules.six=u.schedules.six||{enabled:false,last:"",next:"",lastCycle:"",nextCycle:""};if(u.schedules.six.lastCycle==null)u.schedules.six.lastCycle="";if(u.schedules.six.nextCycle==null)u.schedules.six.nextCycle="";u.schedules.twelve=u.schedules.twelve||{enabled:false,last:"",next:""};
     u.checkups=u.checkups||[];u.repairs=u.repairs||[];u.photos=u.photos||[];u.checkups.forEach(c=>{if(c.cycleCount==null)c.cycleCount="";if(c.serviceKit==null)c.serviceKit="";if(c.maintenanceComponents==null)c.maintenanceComponents=[]});
-    u.repairs.forEach(r=>{if(!r.eventType)r.eventType="Repair";if(r.repairLocation==null)r.repairLocation="";r.partsUsed=r.partsUsed||[];r.partsUsed.forEach(p=>{p.id=p.id||uid("usedpart");p.qty=Number(p.qty)||1;p.unitCost=Number(p.unitCost)||0;if(p.purchaseCost==null)p.purchaseCost="";if(p.listPrice==null)p.listPrice=""});r.servicesUsed=r.servicesUsed||[];r.servicesUsed.forEach(x=>{x.id=x.id||uid("usedservice");x.qty=Number(x.qty)||1;x.unitCost=Number(x.unitCost)||0;if(x.code==null)x.code="";if(x.unit==null)x.unit=""});if(r.laborHours==null)r.laborHours=0;if(r.hourlyRate==null)r.hourlyRate=0;if(r.otherCost==null)r.otherCost=0;if(r.costNote==null)r.costNote=""});
+    u.repairs.forEach(r=>{if(!r.eventType)r.eventType="Repair";if(r.repairLocation==null)r.repairLocation="";r.partsUsed=r.partsUsed||[];r.partsUsed.forEach(p=>{p.id=p.id||uid("usedpart");p.qty=Number(p.qty)||1;p.unitCost=Number(p.unitCost)||0;if(p.purchaseCost==null)p.purchaseCost="";if(p.listPrice==null)p.listPrice=""});r.servicesUsed=r.servicesUsed||[];r.servicesUsed.forEach(x=>{x.id=x.id||uid("usedservice");x.qty=Number(x.qty)||1;x.unitCost=Number(x.unitCost)||0;if(x.code==null)x.code="";if(x.unit==null)x.unit=""});if(!Array.isArray(r.priceSplits))r.priceSplits=[];r.priceSplits.forEach((sp,idx)=>{sp.id=sp.id||uid("split");if(sp.label==null)sp.label=`Árbontás ${idx+1}`;if(sp.priceType==null)sp.priceType="G1";if(sp.netPrice==null)sp.netPrice="";if(!Array.isArray(sp.itemKeys))sp.itemKeys=[];["naturasoftQuoteNo","quoteSentDate","hospitalOrderNo","orderReceivedDate","mediolaDeliveryNo","deliveryDate","mediolaInvoiceNo","invoiceDate"].forEach(k=>{if(sp[k]==null)sp[k]=""})});if(r.laborHours==null)r.laborHours=0;if(r.hourlyRate==null)r.hourlyRate=0;if(r.otherCost==null)r.otherCost=0;if(r.costNote==null)r.costNote=""});
     fillAutomaticDueDates(u);
     if(effectiveMaintenanceProfile(u)==="statim5000sg4" && !u.nextMaintenanceKit)
       u.nextMaintenanceKit=inferredNextMaintenanceKit(u);
@@ -3237,7 +3292,7 @@ async function fetchCloudRow(){
 }
 async function applyCloudRow(row){
   if(!row || !cloudPayloadLooksInitialized(row.data))return false;
-  const needsV15Migration=Number(row.data.version||0)<15||!Array.isArray(row.data.serviceCatalog)||!row.data.settings||Number(row.data.settings.hourlyRate||0)===0||(row.data.partsCatalog||[]).some(p=>p.listPrice===undefined)||(row.data.units||[]).some(u=>u.workflowHistory===undefined||u.hospitalOrderNo===undefined||u.nextMaintenanceKit===undefined);
+  const needsV16Migration=Number(row.data.version||0)<16||!Array.isArray(row.data.serviceCatalog)||!row.data.settings||Number(row.data.settings.hourlyRate||0)===0||(row.data.partsCatalog||[]).some(p=>p.listPrice===undefined)||(row.data.units||[]).some(u=>u.workflowHistory===undefined||u.hospitalOrderNo===undefined||u.nextMaintenanceKit===undefined)||(row.data.units||[]).some(u=>(u.repairs||[]).some(r=>r.priceSplits===undefined));
   suppressCloudSave=true;
   try{
     db=row.data;
@@ -3253,7 +3308,7 @@ async function applyCloudRow(row){
   }finally{
     suppressCloudSave=false;
   }
-  if(needsV15Migration && cloudReady)queueCloudSave();
+  if(needsV16Migration && cloudReady)queueCloudSave();
   return true;
 }
 async function loadCloudDatabase(){
