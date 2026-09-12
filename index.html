@@ -132,6 +132,12 @@
   .split-items{border:1px solid #e0e8ea;background:#f8fafb;border-radius:10px;padding:9px;margin-top:9px}.split-items-title{font-size:10px;text-transform:uppercase;letter-spacing:.06em;font-weight:900;color:var(--muted);margin-bottom:6px}
   .split-item-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px 10px}.split-item{display:flex;align-items:flex-start;gap:6px;font-size:11px}.split-item input{width:auto;margin-top:2px}
   .split-total-line{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-top:10px;padding-top:9px;border-top:1px solid #e2eaec;font-size:12px}.split-total-line b{font-size:15px}
+  .split-price-lines{display:grid;gap:7px;margin-top:9px}
+  .split-price-line{display:grid;grid-template-columns:minmax(180px,1fr) 170px auto;gap:8px;align-items:end;padding:9px;border:1px solid #dbe6e8;background:#fbfcfc;border-radius:10px}
+  .split-price-line .field{margin:0}.split-price-line .btn{margin-bottom:1px}
+  .split-items-toggle{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:12px;font-weight:800;color:#42565d}
+  .split-items-toggle input{width:auto}
+  .split-notes{margin-top:11px}.split-notes textarea{min-height:110px}
   .pricing-grand-total{display:flex;justify-content:flex-end;gap:10px;align-items:center;margin-top:11px;font-weight:900}.pricing-grand-total .amount{font-size:20px;color:#173f46}
   .due-list{display:grid;gap:7px;margin-top:11px}
   .due-line{display:flex;justify-content:space-between;gap:10px;align-items:center;font-size:12px}
@@ -240,7 +246,7 @@
     .catalog-row{grid-template-columns:1fr}
     .catalog-row .price{text-align:left}
     .cost-summary{grid-template-columns:1fr 1fr}
-    .split-doc-grid,.split-item-grid{grid-template-columns:1fr}
+    .split-doc-grid,.split-item-grid,.split-price-line{grid-template-columns:1fr}
   }
   @media print{
     .topbar,aside,.card-actions,.toolbar .btn,.toolbar select{display:none!important}
@@ -893,7 +899,7 @@ let cloudSaveQueued = false;
 let cloudConflict = false;
 let suppressCloudSave = false;
 
-const APP_VERSION = 16;
+const APP_VERSION = 17;
 const blankDB = () => ({
   app:"Mediola STATIM Service Manager",
   version:APP_VERSION,
@@ -1014,7 +1020,7 @@ const I18N = {
     otherCost:"Other cost / adjustment", costNote:"Cost note", partsSubtotal:"Parts — purchase net", laborSubtotal:"Hourly labour", serviceSubtotal:"Services", otherSubtotal:"Other", total:"Total",
     photo:"Photo", view:"View", delete:"Delete", photoCaption:"Photo caption...", noHistory:"No history yet.", clickEnlarge:"Click to enlarge",
     currentWorkOrder:"Current work order", lastWorkOrder:"Last work order", noWorkOrderNo:"No work-order number",
-    pricingSplits:"Pricing / price splits", pricingSplitsHelp:"Create as many separate price groups as needed. Each split can have its own items, manual net price and document numbers.", addPricingSplit:"+ Add price split", splitPricesTotal:"Split prices total", splitName:"Split name", priceType:"Price type", manualNetPrice:"Manual net price", assignedItems:"Items in this split", assignedCost:"Internal cost of assigned items", noPricingSplits:"No split pricing yet.", removeSplit:"Remove split", priceTypeG1:"G1", priceTypeSpecial:"Special", priceTypeDismantled:"Dismantled price", priceTypeCustom:"Custom", quoteNo:"NaturaSoft quotation no.", quoteSentDate:"Quotation sent date", orderNo:"Order no.", orderReceivedDate:"Order received date", deliveryNoShort:"Delivery note no.", invoiceNoShort:"Invoice no.",
+    pricingSplits:"Pricing / price splits", pricingSplitsHelp:"Create as many separate price groups as needed. Each split can have its own items, manual net price and document numbers.", addPricingSplit:"+ Add price split", splitPricesTotal:"Split prices total", splitName:"Split name", priceType:"Price type", manualNetPrice:"Manual net price", assignedItems:"Items in this split", assignedCost:"Internal cost of assigned items", noPricingSplits:"No split pricing yet.", removeSplit:"Remove split", priceLines:"Price items", addPriceLine:"+ Add price item", priceLineName:"Price item description", priceLineAmount:"Net amount", splitNetTotal:"Split net total", splitNotes:"Notes", assignItemsOptional:"Assign parts / services to this split (optional)", removePriceLine:"Remove", priceTypeG1:"G1", priceTypeSpecial:"Special", priceTypeDismantled:"Dismantled price", priceTypeCustom:"Custom", quoteNo:"NaturaSoft quotation no.", quoteSentDate:"Quotation sent date", orderNo:"Order no.", orderReceivedDate:"Order received date", deliveryNoShort:"Delivery note no.", invoiceNoShort:"Invoice no.",
     saveRepair:"Save repair", partsModalTitle:"Parts & labour", partsModalSub:"Maintain reusable parts, service charges and labour pricing.",
     defaultHourlyRate:"Default hourly labour rate", rateHow:"How it works", rateHelp:"New repairs use this rate automatically. Each repair keeps its own saved rate, so historical totals do not change later.",
     serviceCatalog:"Service / labour catalogue", serviceName:"Charge name *", serviceCode:"Code", serviceDefaultPrice:"Default price", serviceUnit:"Unit / basis", serviceNotes:"Notes",
@@ -1105,7 +1111,7 @@ const I18N = {
     otherCost:"Egyéb költség / korrekció", costNote:"Költség megjegyzés", partsSubtotal:"Alkatrészek — beszerzési nettó", laborSubtotal:"Óradíjas munkadíj", serviceSubtotal:"Szolgáltatások", otherSubtotal:"Egyéb", total:"Összesen",
     photo:"Fotó", view:"Megnyitás", delete:"Törlés", photoCaption:"Fotó megjegyzése...", noHistory:"Még nincs előzmény.", clickEnlarge:"Kattints a nagyításhoz",
     currentWorkOrder:"Aktuális munkalap", lastWorkOrder:"Legutolsó munkalap", noWorkOrderNo:"Nincs munkalapszám",
-    pricingSplits:"Árazás / árbontások", pricingSplitsHelp:"Annyi külön árbontást adhatsz hozzá, amennyi kell. Minden bontásnak lehet saját tétele, kézzel megadott nettó ára és külön dokumentumszámai.", addPricingSplit:"+ Új árbontás", splitPricesTotal:"Árbontások nettó összesen", splitName:"Árbontás neve", priceType:"Ártípus", manualNetPrice:"Kézi nettó ár", assignedItems:"Ehhez az árbontáshoz tartozó tételek", assignedCost:"Hozzárendelt tételek belső költsége", noPricingSplits:"Még nincs árbontás.", removeSplit:"Árbontás törlése", priceTypeG1:"G1", priceTypeSpecial:"Speciális", priceTypeDismantled:"Bontott ár", priceTypeCustom:"Egyedi", quoteNo:"NaturaSoft árajánlatszám", quoteSentDate:"Árajánlat elküldés dátuma", orderNo:"Megrendelésszám", orderReceivedDate:"Megrendelés dátuma", deliveryNoShort:"Szállítólevélszám", invoiceNoShort:"Mediola számlaszám",
+    pricingSplits:"Árazás / árbontások", pricingSplitsHelp:"Annyi külön árbontást adhatsz hozzá, amennyi kell. Minden bontásnak lehet saját tétele, kézzel megadott nettó ára és külön dokumentumszámai.", addPricingSplit:"+ Új árbontás", splitPricesTotal:"Árbontások nettó összesen", splitName:"Árbontás neve", priceType:"Ártípus", manualNetPrice:"Kézi nettó ár", assignedItems:"Ehhez az árbontáshoz tartozó tételek", assignedCost:"Hozzárendelt tételek belső költsége", noPricingSplits:"Még nincs árbontás.", removeSplit:"Árbontás törlése", priceLines:"Ártételek", addPriceLine:"+ Új ártétel", priceLineName:"Ártétel megnevezése", priceLineAmount:"Nettó összeg", splitNetTotal:"Árbontás nettó összesen", splitNotes:"Megjegyzések", assignItemsOptional:"Alkatrészek / szolgáltatások hozzárendelése (opcionális)", removePriceLine:"Törlés", priceTypeG1:"G1", priceTypeSpecial:"Speciális", priceTypeDismantled:"Bontott ár", priceTypeCustom:"Egyedi", quoteNo:"NaturaSoft árajánlatszám", quoteSentDate:"Árajánlat elküldés dátuma", orderNo:"Megrendelésszám", orderReceivedDate:"Megrendelés dátuma", deliveryNoShort:"Szállítólevélszám", invoiceNoShort:"Mediola számlaszám",
     saveRepair:"Javítás mentése", partsModalTitle:"Alkatrészek és munkadíj", partsModalSub:"Alkatrészek, szolgáltatási tételek és munkadíjak kezelése.",
     defaultHourlyRate:"Alapértelmezett óradíj", rateHow:"Működés", rateHelp:"Az új javítások automatikusan ezt az óradíjat használják. Minden javítás a saját mentett óradíját őrzi, ezért a korábbi összegek később nem változnak.",
     serviceCatalog:"Szolgáltatás- / munkadíjlista", serviceName:"Tétel neve *", serviceCode:"Kód", serviceDefaultPrice:"Alapár", serviceUnit:"Egység / elszámolás", serviceNotes:"Megjegyzések",
@@ -1851,7 +1857,17 @@ function workflowStatusClass(status){
 function repairLocationText(value){return value==="On-site"?t("repairLocationOnsite"):value==="Workshop"?t("repairLocationWorkshop"):t("repairLocationNone")}
 function workflowIsActive(status){return !!status && status!=="invoiced"}
 function repairSortKey(r){return r?.date||r?.completedDate||r?.updatedAt||""}
-function cardWorkOrder(u){const all=(u.repairs||[]).slice().sort((a,b)=>repairSortKey(b).localeCompare(repairSortKey(a)));if(!all.length)return "";const open=all.filter(r=>!["Completed","Cancelled"].includes(r.status));const active=!!open.length||workflowIsActive(u.workflowStatus||"");const r=open[0]||all[0];const label=active?t("currentWorkOrder"):t("lastWorkOrder");const no=r.jobNo||t("noWorkOrderNo");const meta=[r.date?fmt(r.date):"",repairEventText(r.eventType||"Repair"),repairStatusText(r.status||"")].filter(Boolean).join(" · ");return `<div class="workorder-hero ${active?"current":""}"><div><div class="wo-label">${esc(label)}</div><div class="wo-number">${esc(no)}</div></div><div class="wo-meta">${esc(meta||"—")}</div></div>`}
+function cardWorkOrder(u){
+  const all=(u.repairs||[]).slice().sort((a,b)=>repairSortKey(b).localeCompare(repairSortKey(a)));
+  if(!all.length)return "";
+  const open=all.filter(r=>!["Completed","Cancelled"].includes(r.status));
+  const active=!!open.length||workflowIsActive(u.workflowStatus||"");
+  if(!active)return "";
+  const r=open[0]||all[0];
+  if(!r?.jobNo)return "";
+  const meta=[r.date?fmt(r.date):"",repairEventText(r.eventType||"Repair"),repairStatusText(r.status||"")].filter(Boolean).join(" · ");
+  return `<div class="workorder-hero current"><div><div class="wo-label">${esc(t("currentWorkOrder"))}</div><div class="wo-number">${esc(r.jobNo)}</div></div><div class="wo-meta">${esc(meta||"—")}</div></div>`;
+}
 function allPricingSplits(u){return (u.repairs||[]).flatMap(r=>(r.priceSplits||[]).map(sp=>({...sp,_repairJob:r.jobNo||"",_repairDate:r.date||""})))}
 function uniqueDocRefs(items){const seen=new Set();return items.filter(x=>{if(!x.no)return false;const k=`${String(x.no).trim().toLowerCase()}|${x.date||""}`;if(seen.has(k))return false;seen.add(k);return true})}
 function cardDocRefs(u,kind){const rows=[];const legacy={quote:{no:u.naturasoftNo||"",date:u.workflowMilestones?.quoteSent||"",split:""},order:{no:u.hospitalOrderNo||"",date:u.workflowMilestones?.orderReceived||"",split:""},delivery:{no:u.mediolaDeliveryNo||"",date:u.mediolaDeliveryDate||u.workflowMilestones?.shipped||"",split:""},invoice:{no:u.mediolaInvoiceNo||"",date:u.mediolaInvoiceDate||u.workflowMilestones?.invoiced||"",split:""}}[kind];if(legacy?.no)rows.push(legacy);allPricingSplits(u).forEach(sp=>{const m={quote:[sp.naturasoftQuoteNo,sp.quoteSentDate],order:[sp.hospitalOrderNo,sp.orderReceivedDate],delivery:[sp.mediolaDeliveryNo,sp.deliveryDate],invoice:[sp.mediolaInvoiceNo,sp.invoiceDate]}[kind]||[];if(m[0])rows.push({no:m[0],date:m[1]||"",split:sp.label||sp.priceType||""})});return uniqueDocRefs(rows)}
@@ -2336,13 +2352,162 @@ $("#addRepairServiceBtn").onclick=()=>{
 $("#openPartsFromRepairBtn").onclick=()=>openPartsManager();
 
 function pricingLineItems(){const items=[];repairPartsDraft.forEach(p=>items.push({key:`part:${p.id}`,label:`${p.name}${p.partNo?` · ${p.partNo}`:""} × ${Number(p.qty)||1}`,cost:repairPartPurchasePrice(p)*(Number(p.qty)||0)}));repairServicesDraft.forEach(x=>items.push({key:`service:${x.id}`,label:`${x.name} × ${Number(x.qty)||1}`,cost:(Number(x.unitCost)||0)*(Number(x.qty)||0)}));const hours=Number($("#rLaborHours")?.value)||0,rate=Number($("#rHourlyRate")?.value)||0;items.push({key:"labour",label:`${currentLang==="hu"?"Óradíjas munkadíj":"Hourly labour"} · ${hours} × ${money(rate)}`,cost:hours*rate});const other=Number($("#rOtherCost")?.value)||0;items.push({key:"other",label:currentLang==="hu"?"Egyéb költség / korrekció":"Other cost / adjustment",cost:other});return items}
-function pricingSplitAssignedCost(sp){const m=new Map(pricingLineItems().map(x=>[x.key,x]));return (sp.itemKeys||[]).reduce((sum,k)=>sum+(m.get(k)?.cost||0),0)}
-function cleanPricingSplitAssignments(){const valid=new Set(pricingLineItems().map(x=>x.key));repairPriceSplitsDraft.forEach(sp=>sp.itemKeys=(sp.itemKeys||[]).filter(k=>valid.has(k)))}
-function updatePricingSplit(id,field,value){const sp=repairPriceSplitsDraft.find(x=>x.id===id);if(!sp)return;sp[field]=field==="netPrice"?(value===""?"":Math.max(0,Number(value)||0)):value;renderPricingSplits()}
-function togglePricingSplitItem(splitId,key,checked){const sp=repairPriceSplitsDraft.find(x=>x.id===splitId);if(!sp)return;sp.itemKeys=sp.itemKeys||[];if(checked){if(!sp.itemKeys.includes(key))sp.itemKeys.push(key)}else sp.itemKeys=sp.itemKeys.filter(k=>k!==key);renderPricingSplits()}
-function addPricingSplit(){const n=repairPriceSplitsDraft.length+1;repairPriceSplitsDraft.push({id:uid("split"),label:`${currentLang==="hu"?"Árbontás":"Split"} ${n}`,priceType:"G1",netPrice:"",itemKeys:[],naturasoftQuoteNo:"",quoteSentDate:"",hospitalOrderNo:"",orderReceivedDate:"",mediolaDeliveryNo:"",deliveryDate:"",mediolaInvoiceNo:"",invoiceDate:""});renderPricingSplits()}
-function removePricingSplit(id){if(!confirm(currentLang==="hu"?"Törlöd ezt az árbontást?":"Remove this price split?"))return;repairPriceSplitsDraft=repairPriceSplitsDraft.filter(x=>x.id!==id);renderPricingSplits()}
-function renderPricingSplits(){const wrap=$("#pricingSplitsWrap");if(!wrap)return;cleanPricingSplitAssignments();const items=pricingLineItems();if(!repairPriceSplitsDraft.length){wrap.innerHTML=`<div class="sub">${t("noPricingSplits")}</div>`;$("#pricingSplitsTotal").textContent=money(0);return}wrap.innerHTML=repairPriceSplitsDraft.map((sp,idx)=>{const assigned=new Set(sp.itemKeys||[]);const opts=[["G1",t("priceTypeG1")],["Special",t("priceTypeSpecial")],["Dismantled",t("priceTypeDismantled")],["Custom",t("priceTypeCustom")]].map(([v,l])=>`<option value="${v}" ${sp.priceType===v?"selected":""}>${esc(l)}</option>`).join("");const itemHtml=items.map(it=>`<label class="split-item"><input type="checkbox" ${assigned.has(it.key)?"checked":""} onchange="togglePricingSplitItem('${sp.id}','${it.key}',this.checked)"><span>${esc(it.label)} <b>${money(it.cost)}</b></span></label>`).join("");return `<div class="price-split"><div class="price-split-head"><strong>${currentLang==="hu"?"Árbontás":"Split"} ${idx+1}</strong><div class="spacer"></div><button class="btn small danger" type="button" onclick="removePricingSplit('${sp.id}')">${t("removeSplit")}</button></div><div class="grid3"><div class="field"><label>${t("splitName")}</label><input value="${esc(sp.label||"")}" onchange="updatePricingSplit('${sp.id}','label',this.value)"></div><div class="field"><label>${t("priceType")}</label><select onchange="updatePricingSplit('${sp.id}','priceType',this.value)">${opts}</select></div><div class="field"><label>${t("manualNetPrice")}</label><input type="number" min="0" step="1" value="${sp.netPrice===""?"":Number(sp.netPrice)||0}" onchange="updatePricingSplit('${sp.id}','netPrice',this.value)"></div></div><div class="split-items"><div class="split-items-title">${t("assignedItems")}</div><div class="split-item-grid">${itemHtml||"—"}</div></div><div class="split-total-line"><span>${t("assignedCost")}</span><b>${money(pricingSplitAssignedCost(sp))}</b></div><div class="split-doc-grid"><div class="field"><label>${t("quoteNo")}</label><input value="${esc(sp.naturasoftQuoteNo||"")}" onchange="updatePricingSplit('${sp.id}','naturasoftQuoteNo',this.value)"></div><div class="field"><label>${t("quoteSentDate")}</label><input type="date" value="${esc(sp.quoteSentDate||"")}" onchange="updatePricingSplit('${sp.id}','quoteSentDate',this.value)"></div><div class="field"><label>${t("orderNo")}</label><input value="${esc(sp.hospitalOrderNo||"")}" onchange="updatePricingSplit('${sp.id}','hospitalOrderNo',this.value)"></div><div class="field"><label>${t("orderReceivedDate")}</label><input type="date" value="${esc(sp.orderReceivedDate||"")}" onchange="updatePricingSplit('${sp.id}','orderReceivedDate',this.value)"></div><div class="field"><label>${t("deliveryNoShort")}</label><input value="${esc(sp.mediolaDeliveryNo||"")}" onchange="updatePricingSplit('${sp.id}','mediolaDeliveryNo',this.value)"></div><div class="field"><label>${t("deliveryDate")}</label><input type="date" value="${esc(sp.deliveryDate||"")}" onchange="updatePricingSplit('${sp.id}','deliveryDate',this.value)"></div><div class="field"><label>${t("invoiceNoShort")}</label><input value="${esc(sp.mediolaInvoiceNo||"")}" onchange="updatePricingSplit('${sp.id}','mediolaInvoiceNo',this.value)"></div><div class="field"><label>${t("invoiceDate")}</label><input type="date" value="${esc(sp.invoiceDate||"")}" onchange="updatePricingSplit('${sp.id}','invoiceDate',this.value)"></div></div></div>`}).join("");$("#pricingSplitsTotal").textContent=money(repairPriceSplitsDraft.reduce((sum,sp)=>sum+(Number(sp.netPrice)||0),0))}
+function pricingSplitAssignedCost(sp){
+  if(!sp.assignItems)return 0;
+  const byKey=new Map(pricingLineItems().map(x=>[x.key,x]));
+  return (sp.itemKeys||[]).reduce((sum,k)=>sum+(byKey.get(k)?.cost||0),0);
+}
+function splitPriceLinesTotal(sp){
+  return (sp.priceLines||[]).reduce((sum,line)=>sum+(Number(line.amount)||0),0);
+}
+function syncSplitNetPrice(sp){
+  sp.netPrice=splitPriceLinesTotal(sp);
+  return sp.netPrice;
+}
+function syncAllSplitNetPrices(){repairPriceSplitsDraft.forEach(syncSplitNetPrice)}
+function cleanPricingSplitAssignments(){
+  const valid=new Set(pricingLineItems().map(x=>x.key));
+  repairPriceSplitsDraft.forEach(sp=>sp.itemKeys=(sp.itemKeys||[]).filter(k=>valid.has(k)));
+}
+function updatePricingSplit(id,field,value){
+  const sp=repairPriceSplitsDraft.find(x=>x.id===id);if(!sp)return;
+  sp[field]=value;renderPricingSplits();
+}
+function toggleSplitAssignments(id,checked){
+  const sp=repairPriceSplitsDraft.find(x=>x.id===id);if(!sp)return;
+  sp.assignItems=!!checked;renderPricingSplits();
+}
+function togglePricingSplitItem(splitId,key,checked){
+  const sp=repairPriceSplitsDraft.find(x=>x.id===splitId);if(!sp)return;
+  sp.itemKeys=sp.itemKeys||[];
+  if(checked){if(!sp.itemKeys.includes(key))sp.itemKeys.push(key)}
+  else sp.itemKeys=sp.itemKeys.filter(k=>k!==key);
+  renderPricingSplits();
+}
+function addSplitPriceLine(splitId){
+  const sp=repairPriceSplitsDraft.find(x=>x.id===splitId);if(!sp)return;
+  sp.priceLines=sp.priceLines||[];
+  sp.priceLines.push({id:uid("price"),label:"",amount:""});
+  syncSplitNetPrice(sp);renderPricingSplits();
+}
+function updateSplitPriceLine(splitId,lineId,field,value){
+  const sp=repairPriceSplitsDraft.find(x=>x.id===splitId);if(!sp)return;
+  const line=(sp.priceLines||[]).find(x=>x.id===lineId);if(!line)return;
+  line[field]=field==="amount"?(value===""?"":Math.max(0,Number(value)||0)):value;
+  syncSplitNetPrice(sp);renderPricingSplits();
+}
+function removeSplitPriceLine(splitId,lineId){
+  const sp=repairPriceSplitsDraft.find(x=>x.id===splitId);if(!sp)return;
+  sp.priceLines=(sp.priceLines||[]).filter(x=>x.id!==lineId);
+  syncSplitNetPrice(sp);renderPricingSplits();
+}
+function addPricingSplit(){
+  const n=repairPriceSplitsDraft.length+1;
+  repairPriceSplitsDraft.push({
+    id:uid("split"),
+    label:`${currentLang==="hu"?"Árbontás":"Split"} ${n}`,
+    priceType:"G1",
+    netPrice:0,
+    priceLines:[{id:uid("price"),label:"",amount:""}],
+    notes:"",
+    assignItems:false,
+    itemKeys:[],
+    naturasoftQuoteNo:"",quoteSentDate:"",hospitalOrderNo:"",orderReceivedDate:"",
+    mediolaDeliveryNo:"",deliveryDate:"",mediolaInvoiceNo:"",invoiceDate:""
+  });
+  renderPricingSplits();
+}
+function removePricingSplit(id){
+  if(!confirm(currentLang==="hu"?"Törlöd ezt az árbontást?":"Remove this price split?"))return;
+  repairPriceSplitsDraft=repairPriceSplitsDraft.filter(x=>x.id!==id);renderPricingSplits();
+}
+function renderPricingSplits(){
+  const wrap=$("#pricingSplitsWrap");if(!wrap)return;
+  cleanPricingSplitAssignments();
+  const items=pricingLineItems();
+  if(!repairPriceSplitsDraft.length){
+    wrap.innerHTML=`<div class="sub">${t("noPricingSplits")}</div>`;
+    $("#pricingSplitsTotal").textContent=money(0);
+    return;
+  }
+
+  wrap.innerHTML=repairPriceSplitsDraft.map((sp,idx)=>{
+    if(!Array.isArray(sp.priceLines))sp.priceLines=[];
+    if(sp.notes==null)sp.notes="";
+    if(sp.assignItems==null)sp.assignItems=!!(sp.itemKeys||[]).length;
+    syncSplitNetPrice(sp);
+
+    const assigned=new Set(sp.itemKeys||[]);
+    const typeOptions=[
+      ["G1",t("priceTypeG1")],["Special",t("priceTypeSpecial")],
+      ["Dismantled",t("priceTypeDismantled")],["Custom",t("priceTypeCustom")]
+    ].map(([v,l])=>`<option value="${v}" ${sp.priceType===v?"selected":""}>${esc(l)}</option>`).join("");
+
+    const priceRows=(sp.priceLines||[]).map(line=>`
+      <div class="split-price-line">
+        <div class="field">
+          <label>${t("priceLineName")}</label>
+          <input value="${esc(line.label||"")}" placeholder="${currentLang==="hu"?"pl. Javítási díj, kiszállás, kedvezmény...":"e.g. repair fee, call-out, discount..."}" onchange="updateSplitPriceLine('${sp.id}','${line.id}','label',this.value)">
+        </div>
+        <div class="field">
+          <label>${t("priceLineAmount")}</label>
+          <input type="number" min="0" step="1" value="${line.amount===""?"":Number(line.amount)||0}" onchange="updateSplitPriceLine('${sp.id}','${line.id}','amount',this.value)">
+        </div>
+        <button class="btn small danger" type="button" onclick="removeSplitPriceLine('${sp.id}','${line.id}')">${t("removePriceLine")}</button>
+      </div>`).join("");
+
+    const itemHtml=items.map(it=>`<label class="split-item"><input type="checkbox" ${assigned.has(it.key)?"checked":""} onchange="togglePricingSplitItem('${sp.id}','${it.key}',this.checked)"><span>${esc(it.label)} <b>${money(it.cost)}</b></span></label>`).join("");
+
+    return `<div class="price-split">
+      <div class="price-split-head">
+        <strong>${currentLang==="hu"?"Árbontás":"Split"} ${idx+1}</strong>
+        <div class="spacer"></div>
+        <button class="btn small danger" type="button" onclick="removePricingSplit('${sp.id}')">${t("removeSplit")}</button>
+      </div>
+
+      <div class="grid2">
+        <div class="field"><label>${t("splitName")}</label><input value="${esc(sp.label||"")}" onchange="updatePricingSplit('${sp.id}','label',this.value)"></div>
+        <div class="field"><label>${t("priceType")}</label><select onchange="updatePricingSplit('${sp.id}','priceType',this.value)">${typeOptions}</select></div>
+      </div>
+
+      <div class="split-total-line" style="border-top:0;padding-top:2px">
+        <span><b>${t("priceLines")}</b></span>
+        <button class="btn small brand" type="button" onclick="addSplitPriceLine('${sp.id}')">${t("addPriceLine")}</button>
+      </div>
+      <div class="split-price-lines">${priceRows||`<div class="sub">${currentLang==="hu"?"Nincs ártétel.":"No price items."}</div>`}</div>
+      <div class="split-total-line"><span>${t("splitNetTotal")}</span><b>${money(splitPriceLinesTotal(sp))}</b></div>
+
+      <label class="split-items-toggle">
+        <input type="checkbox" ${sp.assignItems?"checked":""} onchange="toggleSplitAssignments('${sp.id}',this.checked)">
+        ${t("assignItemsOptional")}
+      </label>
+      ${sp.assignItems?`<div class="split-items">
+        <div class="split-items-title">${t("assignedItems")}</div>
+        <div class="split-item-grid">${itemHtml||"—"}</div>
+        <div class="split-total-line"><span>${t("assignedCost")}</span><b>${money(pricingSplitAssignedCost(sp))}</b></div>
+      </div>`:""}
+
+      <div class="split-notes field">
+        <label>${t("splitNotes")}</label>
+        <textarea rows="5" onchange="updatePricingSplit('${sp.id}','notes',this.value)">${esc(sp.notes||"")}</textarea>
+      </div>
+
+      <div class="split-doc-grid">
+        <div class="field"><label>${t("quoteNo")}</label><input value="${esc(sp.naturasoftQuoteNo||"")}" onchange="updatePricingSplit('${sp.id}','naturasoftQuoteNo',this.value)"></div>
+        <div class="field"><label>${t("quoteSentDate")}</label><input type="date" value="${esc(sp.quoteSentDate||"")}" onchange="updatePricingSplit('${sp.id}','quoteSentDate',this.value)"></div>
+        <div class="field"><label>${t("orderNo")}</label><input value="${esc(sp.hospitalOrderNo||"")}" onchange="updatePricingSplit('${sp.id}','hospitalOrderNo',this.value)"></div>
+        <div class="field"><label>${t("orderReceivedDate")}</label><input type="date" value="${esc(sp.orderReceivedDate||"")}" onchange="updatePricingSplit('${sp.id}','orderReceivedDate',this.value)"></div>
+        <div class="field"><label>${t("deliveryNoShort")}</label><input value="${esc(sp.mediolaDeliveryNo||"")}" onchange="updatePricingSplit('${sp.id}','mediolaDeliveryNo',this.value)"></div>
+        <div class="field"><label>${t("deliveryDate")}</label><input type="date" value="${esc(sp.deliveryDate||"")}" onchange="updatePricingSplit('${sp.id}','deliveryDate',this.value)"></div>
+        <div class="field"><label>${t("invoiceNoShort")}</label><input value="${esc(sp.mediolaInvoiceNo||"")}" onchange="updatePricingSplit('${sp.id}','mediolaInvoiceNo',this.value)"></div>
+        <div class="field"><label>${t("invoiceDate")}</label><input type="date" value="${esc(sp.invoiceDate||"")}" onchange="updatePricingSplit('${sp.id}','invoiceDate',this.value)"></div>
+      </div>
+    </div>`;
+  }).join("");
+
+  syncAllSplitNetPrices();
+  $("#pricingSplitsTotal").textContent=money(repairPriceSplitsDraft.reduce((sum,sp)=>sum+splitPriceLinesTotal(sp),0));
+}
 $("#addPricingSplitBtn").onclick=addPricingSplit;
 
 function openRepairModal(repair=null){
@@ -2366,6 +2531,7 @@ function openRepairModal(repair=null){
 $("#rStatus").onchange=()=>{if($("#rStatus").value==="Completed"&&!$("#rDone").value)$("#rDone").value=todayISO()}
 $("#saveRepairBtn").onclick=()=>{
   const u=currentUnit();if(!u)return;
+  syncAllSplitNetPrices();
   const total=calculateRepairCost();
   const data={id:editingRepairId||uid("repair"),eventType:$("#rEventType").value||"Repair",date:$("#rDate").value||todayISO(),status:$("#rStatus").value,technician:$("#rTech").value.trim(),repairLocation:$("#rRepairLocation").value,
     completedDate:$("#rDone").value,jobNo:$("#rJob").value.trim(),cost:Math.round(total),notes:$("#rNotes").value.trim(),parts:$("#rParts").value.trim(),
@@ -2396,7 +2562,7 @@ function renderRepairs(u){
     const structured=(r.partsUsed||[]);
     const partsSummary=structured.length?structured.map(p=>`${esc(p.name)} × ${Number(p.qty)||1}`).join(", "):"";
     const serviceSummary=(r.servicesUsed||[]).length?(r.servicesUsed||[]).map(x=>`${esc(x.name)} × ${Number(x.qty)||1}${x.unit?` (${esc(x.unit)})`:""}`).join(", "):"";
-    const pricingSummary=(r.priceSplits||[]).length?(r.priceSplits||[]).map(sp=>`${esc(sp.label||sp.priceType||"")} · ${money(Number(sp.netPrice)||0)}`).join(" | "):"";
+    const pricingSummary=(r.priceSplits||[]).length?(r.priceSplits||[]).map(sp=>`${esc(sp.label||sp.priceType||"")} · ${money(Array.isArray(sp.priceLines)?sp.priceLines.reduce((sum,line)=>sum+(Number(line.amount)||0),0):(Number(sp.netPrice)||0))}`).join(" | "):"";
     const laborInfo=Number(r.laborHours)>0?`${Number(r.laborHours)} ${t("hoursShort")} × ${money(r.hourlyRate||0)}`:"";
     return `<div class="history-item">
       <div class="history-top"><strong>${fmt(r.date)} · ${esc(repairEventText(r.eventType||"Repair"))}${r.jobNo?` · ${esc(r.jobNo)}`:""}</strong><span class="badge ${["Completed","Cancelled"].includes(r.status)?"ok":"repair"}">${esc(repairStatusText(r.status))}</span></div>
@@ -3247,7 +3413,21 @@ function normalizeDB(){
     const mm={repair_completed:"repairCompleted",pricing_completed:"pricingCompleted",quote_sent:"quoteSent",order_received:"orderReceived",shipped:"shipped",invoiced:"invoiced"};u.workflowHistory.forEach(w=>{const k=mm[w.status];if(k&&w.date&&!u.workflowMilestones[k])u.workflowMilestones[k]=w.date});if(u.mediolaDeliveryDate&&!u.workflowMilestones.shipped)u.workflowMilestones.shipped=u.mediolaDeliveryDate;if(u.mediolaInvoiceDate&&!u.workflowMilestones.invoiced)u.workflowMilestones.invoiced=u.mediolaInvoiceDate;if(u.workflowStatus==="pricing_completed")u.workflowStatus="waiting_quote";if(u.workflowStatus==="quote_sent")u.workflowStatus="waiting_order";
     u.schedules=u.schedules||{six:{enabled:true,last:"",next:"",lastCycle:"",nextCycle:""},twelve:{enabled:true,last:"",next:""}};u.schedules.six=u.schedules.six||{enabled:false,last:"",next:"",lastCycle:"",nextCycle:""};if(u.schedules.six.lastCycle==null)u.schedules.six.lastCycle="";if(u.schedules.six.nextCycle==null)u.schedules.six.nextCycle="";u.schedules.twelve=u.schedules.twelve||{enabled:false,last:"",next:""};
     u.checkups=u.checkups||[];u.repairs=u.repairs||[];u.photos=u.photos||[];u.checkups.forEach(c=>{if(c.cycleCount==null)c.cycleCount="";if(c.serviceKit==null)c.serviceKit="";if(c.maintenanceComponents==null)c.maintenanceComponents=[]});
-    u.repairs.forEach(r=>{if(!r.eventType)r.eventType="Repair";if(r.repairLocation==null)r.repairLocation="";r.partsUsed=r.partsUsed||[];r.partsUsed.forEach(p=>{p.id=p.id||uid("usedpart");p.qty=Number(p.qty)||1;p.unitCost=Number(p.unitCost)||0;if(p.purchaseCost==null)p.purchaseCost="";if(p.listPrice==null)p.listPrice=""});r.servicesUsed=r.servicesUsed||[];r.servicesUsed.forEach(x=>{x.id=x.id||uid("usedservice");x.qty=Number(x.qty)||1;x.unitCost=Number(x.unitCost)||0;if(x.code==null)x.code="";if(x.unit==null)x.unit=""});if(!Array.isArray(r.priceSplits))r.priceSplits=[];r.priceSplits.forEach((sp,idx)=>{sp.id=sp.id||uid("split");if(sp.label==null)sp.label=`Árbontás ${idx+1}`;if(sp.priceType==null)sp.priceType="G1";if(sp.netPrice==null)sp.netPrice="";if(!Array.isArray(sp.itemKeys))sp.itemKeys=[];["naturasoftQuoteNo","quoteSentDate","hospitalOrderNo","orderReceivedDate","mediolaDeliveryNo","deliveryDate","mediolaInvoiceNo","invoiceDate"].forEach(k=>{if(sp[k]==null)sp[k]=""})});if(r.laborHours==null)r.laborHours=0;if(r.hourlyRate==null)r.hourlyRate=0;if(r.otherCost==null)r.otherCost=0;if(r.costNote==null)r.costNote=""});
+    u.repairs.forEach(r=>{if(!r.eventType)r.eventType="Repair";if(r.repairLocation==null)r.repairLocation="";r.partsUsed=r.partsUsed||[];r.partsUsed.forEach(p=>{p.id=p.id||uid("usedpart");p.qty=Number(p.qty)||1;p.unitCost=Number(p.unitCost)||0;if(p.purchaseCost==null)p.purchaseCost="";if(p.listPrice==null)p.listPrice=""});r.servicesUsed=r.servicesUsed||[];r.servicesUsed.forEach(x=>{x.id=x.id||uid("usedservice");x.qty=Number(x.qty)||1;x.unitCost=Number(x.unitCost)||0;if(x.code==null)x.code="";if(x.unit==null)x.unit=""});if(!Array.isArray(r.priceSplits))r.priceSplits=[];r.priceSplits.forEach((sp,idx)=>{
+      sp.id=sp.id||uid("split");
+      if(sp.label==null)sp.label=`Árbontás ${idx+1}`;
+      if(sp.priceType==null)sp.priceType="G1";
+      if(!Array.isArray(sp.itemKeys))sp.itemKeys=[];
+      if(sp.assignItems==null)sp.assignItems=sp.itemKeys.length>0;
+      if(sp.notes==null)sp.notes="";
+      if(!Array.isArray(sp.priceLines)){
+        sp.priceLines=[];
+        if(sp.netPrice!==""&&sp.netPrice!=null)sp.priceLines.push({id:uid("price"),label:"",amount:Number(sp.netPrice)||0});
+      }
+      sp.priceLines.forEach(line=>{line.id=line.id||uid("price");if(line.label==null)line.label="";if(line.amount==null)line.amount=""});
+      sp.netPrice=sp.priceLines.reduce((sum,line)=>sum+(Number(line.amount)||0),0);
+      ["naturasoftQuoteNo","quoteSentDate","hospitalOrderNo","orderReceivedDate","mediolaDeliveryNo","deliveryDate","mediolaInvoiceNo","invoiceDate"].forEach(k=>{if(sp[k]==null)sp[k]=""});
+    });if(r.laborHours==null)r.laborHours=0;if(r.hourlyRate==null)r.hourlyRate=0;if(r.otherCost==null)r.otherCost=0;if(r.costNote==null)r.costNote=""});
     fillAutomaticDueDates(u);
     if(effectiveMaintenanceProfile(u)==="statim5000sg4" && !u.nextMaintenanceKit)
       u.nextMaintenanceKit=inferredNextMaintenanceKit(u);
@@ -3292,7 +3472,7 @@ async function fetchCloudRow(){
 }
 async function applyCloudRow(row){
   if(!row || !cloudPayloadLooksInitialized(row.data))return false;
-  const needsV16Migration=Number(row.data.version||0)<16||!Array.isArray(row.data.serviceCatalog)||!row.data.settings||Number(row.data.settings.hourlyRate||0)===0||(row.data.partsCatalog||[]).some(p=>p.listPrice===undefined)||(row.data.units||[]).some(u=>u.workflowHistory===undefined||u.hospitalOrderNo===undefined||u.nextMaintenanceKit===undefined)||(row.data.units||[]).some(u=>(u.repairs||[]).some(r=>r.priceSplits===undefined));
+  const needsV17Migration=Number(row.data.version||0)<17||!Array.isArray(row.data.serviceCatalog)||!row.data.settings||Number(row.data.settings.hourlyRate||0)===0||(row.data.partsCatalog||[]).some(p=>p.listPrice===undefined)||(row.data.units||[]).some(u=>u.workflowHistory===undefined||u.hospitalOrderNo===undefined||u.nextMaintenanceKit===undefined)||(row.data.units||[]).some(u=>(u.repairs||[]).some(r=>r.priceSplits===undefined||(r.priceSplits||[]).some(sp=>sp.priceLines===undefined||sp.notes===undefined||sp.assignItems===undefined)));
   suppressCloudSave=true;
   try{
     db=row.data;
@@ -3308,7 +3488,7 @@ async function applyCloudRow(row){
   }finally{
     suppressCloudSave=false;
   }
-  if(needsV16Migration && cloudReady)queueCloudSave();
+  if(needsV17Migration && cloudReady)queueCloudSave();
   return true;
 }
 async function loadCloudDatabase(){
